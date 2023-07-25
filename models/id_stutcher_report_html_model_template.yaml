@@ -1,0 +1,38 @@
+models:
+  - name: id_stitcher_report
+    model_type: report_model
+    model_spec:
+      materialization:
+        output_type: report
+        run_type: discrete
+      html: |
+        <!DOCTYPE html>
+        <html>
+        <body>
+            <h2>Tables</h2>
+            {% with table = this.DeRef("queries/overall_stats").RunEphemeralSelector(-1) %}
+                <h3>Overall Stats</h3>
+                <p>This table shows stats related to user and ID counts</p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for column in table.Columns %}
+                                    <th>{{ column }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in table.Results %}
+                                <tr>
+                                    {% for value in row %}
+                                        <td>{{ value }}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endwith %}
+        </body>
+        </html>
