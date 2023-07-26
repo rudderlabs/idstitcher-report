@@ -1,2 +1,24 @@
-# This is a sample file, for detailed reference see: https://rudderlabs.github.io/pywht/
 inputs:
+  - ids:
+      - entity: user
+        select: user_id
+        type: user_id
+      - entity: user
+        select: anonymous_id
+        type: anonymous_id
+      - entity: user
+        select: lower(email)
+        type: email
+    name: rsIdentifies
+    occurred_at_col: timestamp
+    table: rs_profiles.demo_rs_identifies
+  - ids:
+      - entity: user
+        select: user_id
+        type: user_id
+      - entity: user
+        select: anonymous_id
+        type: anonymous_id
+    name: rsTracks
+    occurred_at_col: timestamp
+    view: warehouse_ginkgo.rs_profiles.view_may22_demo_rs_tracks
