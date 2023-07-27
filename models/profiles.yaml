@@ -7,7 +7,7 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("models/domain_profile_id_stitcher_dummy") %}
+        {% with input_material = this.DeRef("user/user_default_id_stitcher") %}
           select sum(user_count) as user_count, max(other_id_count) as max_id_count,
             (sum(user_count * other_id_count)::float / sum(user_count)::float)::numeric(8,2) as avg_id_count
           from (
