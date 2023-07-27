@@ -28,7 +28,7 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = ("entity/user/user_default_id_stitcher") %}
+        {% with input_material = this.DeRef("entity/user/user_default_id_stitcher") %}
           select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
           from {{input_material}}_INTERNAL_MAPPING
           group by {{input_material.Model.GetEntity().IdColumnName}}
