@@ -6,6 +6,7 @@ models:
         output_type: report
         run_type: discrete
       html: |
+        fileName1 = this.DeRef("models/overall_stats")
         <!DOCTYPE html>
         <html>
         <body>
