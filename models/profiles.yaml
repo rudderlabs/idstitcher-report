@@ -11,11 +11,11 @@ models:
           select sum(user_count) as user_count, max(other_id_count) as max_id_count,
             (sum(user_count * other_id_count)::float / sum(user_count)::float)::numeric(8,2) as avg_id_count
           from (
-            select other_id_count,  count(distinct {{input_material.GetEntity().IdColumnName}}) as user_count
+            select other_id_count,  count(distinct {{input_material.Model.GetEntity().IdColumnName}}) as user_count
             from (
-              select {{input_material.GetEntity().IdColumnName}}, count(other_id) as other_id_count
+              select {{input_material.Model.GetEntity().IdColumnName}}, count(other_id) as other_id_count
               from {{input_material}}
-              group by {{input_material.GetEntity().IdColumnName}}
+              group by {{input_material.Model.GetEntity().IdColumnName}}
             )
             group by other_id_count
           )
