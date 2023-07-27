@@ -133,21 +133,21 @@ models:
   #         order by total_id_count desc , id_type_count desc
   #       {% endwith %}
   # - name: id_count
-    model_type: sql_template
-    model_spec:
-      validity_time: 24h # 1 day
-      materialization:
-        output_type: ephemeral
-        run_type: discrete
-      single_sql: |
-        {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
-          select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
-          from {{input_material1}}_INTERNAL_EDGES
-          where id1 in (
-            select distinct other_id
-            from {{input_material1}}
-            where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2}})
-            )
-          group by 1, 2
-          order by 3 desc;
-        {% endwith %}
+  #   model_type: sql_template
+  #   model_spec:
+  #     validity_time: 24h # 1 day
+  #     materialization:
+  #       output_type: ephemeral
+  #       run_type: discrete
+  #     single_sql: |
+  #       {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
+  #         select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
+  #         from {{input_material1}}_INTERNAL_EDGES
+  #         where id1 in (
+  #           select distinct other_id
+  #           from {{input_material1}}
+  #           where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2}})
+  #           )
+  #         group by 1, 2
+  #         order by 3 desc;
+  #       {% endwith %}
