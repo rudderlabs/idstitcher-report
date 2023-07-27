@@ -20,134 +20,134 @@ models:
             group by other_id_count
           )
         {% endwith %}
-  # - name: clusters
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material = this.DeRef(ID_STITCHER_MODEL_NAME) %}
-  #         select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
-  #         from {{input_material}}_INTERNAL_MAPPING
-  #         group by {{input_material.Model.GetEntity().IdColumnName}}
-  #       {% endwith %}
-  # - name: clusters_sorted_by_size
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material = this.DeRef("queries/clusters") %}
-  #         select * from {{input_material}}
-  #         order by id_count desc
-  #         limit 10
-  #       {% endwith %}
-  # - name: clusters_sorted_by_dist
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material = this.DeRef("queries/clusters") %}
-  #         select * from {{input_material}}
-  #         order by max_dist desc
-  #         limit 10
-  #       {% endwith %}
-  # - name: top_max_degree_nodes
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material = this.DeRef(ID_STITCHER_MODEL_NAME) %}
-  #         select {{input_material.Model.GetEntity().IdColumnName}} as main_id, node_id, node_id_type, degree
-  #         from (
-  #           select m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type, count(*) as degree, row_number() over (partition by m.{{input_material.Model.GetEntity().IdColumnName}} order by count(*) desc) as rn
-  #           from (
-  #             select id1 as node_id, id1_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_INTERNAL_EDGES A inner join {{input_material}} B on A.id1 = B.other_id
-  #             where id1 <> id2
-  #             union all
-  #             select id2 as node_id, id2_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_INTERNAL_EDGES A inner join {{input_material}} B on A.id2 = B.other_id
-  #             where id1 <> id2
-  #           ) AS e
-  #           inner join {{input_material}} m on e.node_id = m.other_id
-  #           where m.{{input_material.Model.GetEntity().IdColumnName}} IN (
-  #             select {{input_material.Model.GetEntity().IdColumnName}}
-  #             from {{input_material}}
-  #             group by {{input_material.Model.GetEntity().IdColumnName}}
-  #             order by count(other_id) desc
-  #             limit 10
-  #           )
-  #           group by m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type
-  #         ) as ranked
-  #         where rn <= 10
-  #       {% endwith %}
-  # - name: edges_graph
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/top_max_degree_nodes") %}
-  #         select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-  #         from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
-  #         where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
-  #       {% endwith %}
-  # - name: edges_biggest_cluster
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/top_max_degree_nodes") input_material3 = this.DeRef("queries/clusters_sorted_by_size") %}
-  #         select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-  #         from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
-  #         where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
-  #           AND {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3}} limit 1)
-  #       {% endwith %}
-  # - name: id_type_count
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
-  #         select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count, 
-  #       other_id_type, count(other_id) as id_type_count
-  #         from {{input_material1}} A inner join {{input_material2}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
-  #         group by A.{{input_material1.Model.GetEntity().IdColumnName}}, other_id_type
-  #         order by total_id_count desc , id_type_count desc
-  #       {% endwith %}
-  # - name: id_count
-  #   model_type: sql_template
-  #   model_spec:
-  #     validity_time: 24h # 1 day
-  #     materialization:
-  #       output_type: ephemeral
-  #       run_type: discrete
-  #     single_sql: |
-  #       {% with input_material1 = this.DeRef(ID_STITCHER_MODEL_NAME) input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
-  #         select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
-  #         from {{input_material1}}_INTERNAL_EDGES
-  #         where id1 in (
-  #           select distinct other_id
-  #           from {{input_material1}}
-  #           where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2}})
-  #           )
-  #         group by 1, 2
-  #         order by 3 desc;
-  #       {% endwith %}
+  - name: clusters
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material = ("entity/user/user_default_id_stitcher") %}
+          select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
+          from {{input_material}}_INTERNAL_MAPPING
+          group by {{input_material.Model.GetEntity().IdColumnName}}
+        {% endwith %}
+  - name: clusters_sorted_by_size
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material = this.DeRef("queries/clusters") %}
+          select * from {{input_material}}
+          order by id_count desc
+          limit 10
+        {% endwith %}
+  - name: clusters_sorted_by_dist
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material = this.DeRef("queries/clusters") %}
+          select * from {{input_material}}
+          order by max_dist desc
+          limit 10
+        {% endwith %}
+  - name: top_max_degree_nodes
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material = this.DeRef("entity/user/user_default_id_stitcher") %}
+          select {{input_material.Model.GetEntity().IdColumnName}} as main_id, node_id, node_id_type, degree
+          from (
+            select m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type, count(*) as degree, row_number() over (partition by m.{{input_material.Model.GetEntity().IdColumnName}} order by count(*) desc) as rn
+            from (
+              select id1 as node_id, id1_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_INTERNAL_EDGES A inner join {{input_material}} B on A.id1 = B.other_id
+              where id1 <> id2
+              union all
+              select id2 as node_id, id2_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_INTERNAL_EDGES A inner join {{input_material}} B on A.id2 = B.other_id
+              where id1 <> id2
+            ) AS e
+            inner join {{input_material}} m on e.node_id = m.other_id
+            where m.{{input_material.Model.GetEntity().IdColumnName}} IN (
+              select {{input_material.Model.GetEntity().IdColumnName}}
+              from {{input_material}}
+              group by {{input_material.Model.GetEntity().IdColumnName}}
+              order by count(other_id) desc
+              limit 10
+            )
+            group by m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type
+          ) as ranked
+          where rn <= 10
+        {% endwith %}
+  - name: edges_graph
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material1 = this.DeRef("entity/user/user_default_id_stitcher") input_material2 = this.DeRef("queries/top_max_degree_nodes") %}
+          select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
+          from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
+          where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
+        {% endwith %}
+  - name: edges_biggest_cluster
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material1 = this.DeRef("entity/user/user_default_id_stitcher") input_material2 = this.DeRef("queries/top_max_degree_nodes") input_material3 = this.DeRef("queries/clusters_sorted_by_size") %}
+          select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
+          from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
+          where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
+            AND {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3}} limit 1)
+        {% endwith %}
+  - name: id_type_count
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material1 = this.DeRef("entity/user/user_default_id_stitcher") input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
+          select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count, 
+        other_id_type, count(other_id) as id_type_count
+          from {{input_material1}} A inner join {{input_material2}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
+          group by A.{{input_material1.Model.GetEntity().IdColumnName}}, other_id_type
+          order by total_id_count desc , id_type_count desc
+        {% endwith %}
+  - name: id_count
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+        {% with input_material1 = this.DeRef("entity/user/user_default_id_stitcher") input_material2 = this.DeRef("queries/clusters_sorted_by_size") %}
+          select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
+          from {{input_material1}}_INTERNAL_EDGES
+          where id1 in (
+            select distinct other_id
+            from {{input_material1}}
+            where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2}})
+            )
+          group by 1, 2
+          order by 3 desc;
+        {% endwith %}
