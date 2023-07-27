@@ -11,7 +11,7 @@ models:
         <html>
         <body>
             <h2>Tables</h2>
-            {% with table = this.DeRef("queries/overall_stats").RunEphemeralSelector(-1) %}
+            {% with table = this.DeRef("models/overall_stats").RunEphemeralSelector(-1) %}
                 <h3>Overall Stats</h3>
                 <p>This table shows stats related to user and ID counts</p>
                 <div class="table-container">
