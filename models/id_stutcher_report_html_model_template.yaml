@@ -8,10 +8,3 @@ models:
       html: |
         this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String())
         this.DeRef("models/clusters").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters").String())
-        this.DeRef("models/clusters_sorted_by_size").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters_sorted_by_size").String())
-        this.DeRef("models/clusters_sorted_by_dist").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters_sorted_by_dist").String())
-        this.DeRef("models/top_max_degree_nodes").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/top_max_degree_nodes").String())
-        this.DeRef("models/edges_graph").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/edges_graph").String())
-        this.DeRef("models/edges_biggest_cluster").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/edges_biggest_cluster").String())
-        this.DeRef("models/id_type_count").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_type_count").String())
-        this.DeRef("models/id_count").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_count").String())
