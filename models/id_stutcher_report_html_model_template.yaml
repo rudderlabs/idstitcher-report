@@ -6,6 +6,12 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        {% with overall_stats_file = this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String()) %}
-        {% endwith %}
-      
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters_sorted_by_size").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters_sorted_by_dist").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/top_max_degree_nodes").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/edges_graph").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/edges_biggest_cluster").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_type_count").String())
+        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_count").String())
