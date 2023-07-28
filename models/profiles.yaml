@@ -115,7 +115,7 @@ models:
           select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
           from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
           where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
-            AND {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3}} limit 1)
+            AND B.{{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3}} limit 1)
         {% endwith %}
   - name: id_type_count
     model_type: sql_template
