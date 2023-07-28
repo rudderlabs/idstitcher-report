@@ -6,5 +6,5 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String())
-        this.DeRef("models/clusters").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters").String())
+        {{ this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String()) }}
+        {{ this.DeRef("models/clusters").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/clusters").String()) }}
