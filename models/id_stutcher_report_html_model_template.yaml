@@ -6,34 +6,6 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        fileName1 = this.DeRef("models/overall_stats")
-        <!DOCTYPE html>
-        <html>
-        <body>
-            <h2>Tables</h2>
-            {% with table = this.DeRef("models/overall_stats").RunEphemeralSelector(-1) %}
-                <h3>Overall Stats</h3>
-                <p>This table shows stats related to user and ID counts</p>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                {% for column in table.Columns %}
-                                    <th>{{ column }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in table.Results %}
-                                <tr>
-                                    {% for value in row %}
-                                        <td>{{ value }}</td>
-                                    {% endfor %}
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% endwith %}
-        </body>
-        </html>
+        {% with overall_stats_file = this.DeRef("models/overall_stats").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/overall_stats").String()) %}
+        {% endwith %}
+      
