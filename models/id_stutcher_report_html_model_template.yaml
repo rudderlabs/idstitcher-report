@@ -51,7 +51,7 @@ models:
             {% with table = this.DeRef("models/overall_stats").RunEphemeralSelector(-1) %}
             {{ table.StoreToJSON(this.DeRef("models/overall_stats").String()+".json") }}
             <div class="table-container">
-                <h3>{{ this.Model.Name() }}</h3>
+                <h3>{{ this.DeRef("models/overall_stats").GetModel().Name() }}</h3>
                 <table>
                     <thead>
                         <tr>
