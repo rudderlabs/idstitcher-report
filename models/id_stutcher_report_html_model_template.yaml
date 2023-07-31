@@ -49,10 +49,9 @@ models:
             </h1>
 
             <h2>Tables</h2>
-            {% set query_models = [
+            {%- set query_models = [
             this.DeRef("models/clusters"),
-            this.DeRef("models/overall_stats")
-            ] %}
+            this.DeRef("models/overall_stats")] -%}
             {% for qmodel in query_models %}
               {{ table.StoreToJSON(qmodel.String()+".json") }}
               {% with table = qmodel.RunEphemeralSelector(-1) %}
