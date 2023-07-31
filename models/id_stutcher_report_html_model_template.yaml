@@ -13,6 +13,33 @@ models:
             <title>
                 ID Stitcher Report
             </title>
+            <style>
+                .table-container {
+                    margin-bottom: 3em;
+                }
+
+                .table-container table {
+                    border-collapse: collapse;
+                    width: 50%;
+                }
+
+                .table-container th, .table-container td {
+                    border: 1px solid #dddddd;
+                    text-align: left;
+                    padding: 0.5em;
+                }
+
+                .table-container th {
+                    background-color: #f2f2f2;
+                }
+
+                img {
+                    max-width: 100%;
+                    height: auto;
+                    display: block;
+                    margin: 1em auto;
+                }
+            </style>            
         </head>
 
         <body style="text-align:center">
