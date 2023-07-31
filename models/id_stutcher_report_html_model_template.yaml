@@ -6,7 +6,7 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        {%- set query_models = [this.DeRef("models/clusters"), this.DeRef("models/overall_stats"), this.DeRef("models/clusters_sorted_by_size"), this.DeRef("models/clusters_sorted_by_dist"), this.DeRef("models/top_max_degree_nodes"), this.DeRef("models/edges_graph"), this.DeRef("models/edges_biggest_cluster"), this.DeRef("models/id_type_count"), this.DeRef("models/id_count")] -%}
+        {% set query_models = [this.DeRef("models/clusters"), this.DeRef("models/overall_stats"), this.DeRef("models/clusters_sorted_by_size"), this.DeRef("models/clusters_sorted_by_dist"), this.DeRef("models/top_max_degree_nodes"), this.DeRef("models/edges_graph"), this.DeRef("models/edges_biggest_cluster"), this.DeRef("models/id_type_count"), this.DeRef("models/id_count")] %}
 
         <!DOCTYPE html>
         <html lang="en">
@@ -25,7 +25,8 @@ models:
                     width: 50%;
                 }
 
-                .table-container th, .table-container td {
+                .table-container th,
+                .table-container td {
                     border: 1px solid #dddddd;
                     text-align: left;
                     padding: 0.5em;
@@ -41,7 +42,7 @@ models:
                     display: block;
                     margin: 1em auto;
                 }
-            </style>            
+            </style>
         </head>
 
         <body style="text-align:center">
@@ -51,30 +52,32 @@ models:
 
             <h2>Tables</h2>
             {% for qmodel in query_models %}
-              {% with table = {{qmodel.RunEphemeralSelector(-1)}} %}
-              {{ table.StoreToJSON(qmodel.String()+".json") }}
-              <div class="table-container">
-                  <h3>{{ qmodel.GetModel().Name() }}</h3>
-                  <table>
-                      <thead>
-                          <tr>
-                              {% for column in table.Columns %}
-                                  <th>{{ column }}</th>
-                              {% endfor %}
-                          </tr>
-                      </thead>
-                      <tbody>
-                          {% for row in table.Results %}
-                              <tr>
-                                  {% for value in row %}
-                                      <td>{{ value }}</td>
-                                  {% endfor %}
-                              </tr>
-                          {% endfor %}
-                      </tbody>
-                  </table>
-              </div>
-              {% endwith %}
+            {% with model = {{qmodel}} %}
+            {% with table = {{model.RunEphemeralSelector(-1)}} %}
+            {{ table.StoreToJSON(model.String()+".json") }}
+            <div class="table-container">
+                <h3>{{ qmodel.GetModel().Name() }}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            {% for column in table.Columns %}
+                            <th>{{ column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table.Results %}
+                        <tr>
+                            {% for value in row %}
+                            <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endwith %}
+            {% endwith %}
 
             {% endfor %}
 
