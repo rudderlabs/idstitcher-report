@@ -44,8 +44,7 @@ models:
                 </table>
             </div>
             {% endwith %}
-                
-            {% endfor %}
+
         </body>
 
         </html>
