@@ -49,7 +49,7 @@ models:
             </h1>
 
             <h2>Tables</h2>
-            {%- set query_models = [
+            {%- set query_models = [\
             this.DeRef("models/clusters"), \
             this.DeRef("models/overall_stats")] -%}
             {% for qmodel in query_models %}
