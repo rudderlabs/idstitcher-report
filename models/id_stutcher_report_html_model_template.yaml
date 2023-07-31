@@ -6,7 +6,7 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        {%- set query_models = [this.DeRef("models/clusters"), this.DeRef("models/overall_stats")], this.DeRef("models/clusters_sorted_by_size"), this.DeRef("models/clusters_sorted_by_dist"), this.DeRef("models/top_max_degree_nodes"), this.DeRef("models/edges_graph"), this.DeRef("models/edges_biggest_cluster"), this.DeRef("models/id_type_count"), this.DeRef("models/id_count")] -%}
+        {%- set query_models = [this.DeRef("models/clusters"), this.DeRef("models/overall_stats"), this.DeRef("models/clusters_sorted_by_size"), this.DeRef("models/clusters_sorted_by_dist"), this.DeRef("models/top_max_degree_nodes"), this.DeRef("models/edges_graph"), this.DeRef("models/edges_biggest_cluster"), this.DeRef("models/id_type_count"), this.DeRef("models/id_count")] -%}
 
         <!DOCTYPE html>
         <html lang="en">
