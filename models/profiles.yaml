@@ -1,5 +1,5 @@
 models:
-  - name: Overall Stats
+  - name: overall_stats
     model_type: sql_template
     model_spec:
       validity_time: 24h # 1 day
