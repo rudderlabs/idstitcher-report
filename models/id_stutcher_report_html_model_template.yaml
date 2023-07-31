@@ -15,3 +15,5 @@ models:
         {{ this.DeRef("models/edges_biggest_cluster").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/edges_biggest_cluster").String()) }}
         {{ this.DeRef("models/id_type_count").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_type_count").String()) }}
         {{ this.DeRef("models/id_count").RunEphemeralSelector(-1).StoreToJSON(this.DeRef("models/id_count").String()) }}
+
+        {{ReadFile(this.DeRef("models/overall_stats").String())}}
