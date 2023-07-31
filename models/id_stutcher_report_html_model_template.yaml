@@ -52,32 +52,32 @@ models:
 
             <h2>Tables</h2>
             {% for qmodel in query_models %}
-            {% with model = {{qmodel}} %}
-            {% with table = {{model.RunEphemeralSelector(-1)}} %}
-            {{ table.StoreToJSON(model.String()+".json") }}
-            <div class="table-container">
-                <h3>{{ qmodel.GetModel().Name() }}</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            {% for column in table.Columns %}
-                            <th>{{ column }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in table.Results %}
-                        <tr>
-                            {% for value in row %}
-                            <td>{{ value }}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endwith %}
-            {% endwith %}
+              {% with model = {{qmodel}} %}
+                {% with table = {{model.RunEphemeralSelector(-1)}} %}
+                  {{ table.StoreToJSON(model.String()+".json") }}
+                  <div class="table-container">
+                      <h3>{{ qmodel.GetModel().Name() }}</h3>
+                      <table>
+                          <thead>
+                              <tr>
+                                  {% for column in table.Columns %}
+                                    <th>{{ column }}</th>
+                                  {% endfor %}
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {% for row in table.Results %}
+                              <tr>
+                                  {% for value in row %}
+                                    <td>{{ value }}</td>
+                                  {% endfor %}
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                      </table>
+                  </div>
+                {% endwith %}
+              {% endwith %}
 
             {% endfor %}
 
