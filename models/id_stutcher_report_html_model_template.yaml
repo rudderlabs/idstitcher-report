@@ -50,6 +50,15 @@ models:
                 Testing
             </h1>
 
+            <h2>ID Graph</h2>
+            <p>ID Graph contains top clusters sorted by their size. Each cluster contains top nodes sorted by their degree (Only edges connecting these nodes are shown. These nodes might have more edges which are not shown here)</p>
+            <img src="id_graph.png" alt="ID Graph">
+
+            <h2>Biggest Cluster</h2>
+            <p>Biggest Cluster graph contains top nodes sorted by their degree (Only edges connecting these nodes are shown. These nodes might have more edges which are not shown here)</p>
+            <img src="biggest_cluster.png" alt="Biggest Cluster">
+
+
             <h2>Tables</h2>
             {% for qmodel in query_models %}
               {% with table = this.DeRef(qmodel).RunEphemeralSelector(-1) %}
