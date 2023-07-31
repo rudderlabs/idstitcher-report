@@ -50,7 +50,7 @@ models:
 
             <h2>Tables</h2>
             {%- set query_models = [
-            this.DeRef("models/clusters"),
+            this.DeRef("models/clusters"), \
             this.DeRef("models/overall_stats")] -%}
             {% for qmodel in query_models %}
               {{ table.StoreToJSON(qmodel.String()+".json") }}
