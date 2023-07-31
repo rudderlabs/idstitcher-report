@@ -1,6 +1,7 @@
 models:
   - name: overall_stats
     model_type: sql_template
+    description: "Over all stats of the model"
     model_spec:
       validity_time: 24h # 1 day
       materialization:
