@@ -60,7 +60,7 @@ models:
 
 
             <h2>Tables</h2>
-            {% comment %}
+            {% verbatim %}
             {% for qmodel in query_models %}
               {% with table = this.DeRef(qmodel).RunEphemeralSelector(-1) %}
                 {{ table.StoreToJSON(this.DeRef(qmodel).GetWhtContext().OutputFolder()+"/reports/"+this.DeRef(qmodel).String()+".json") }}
@@ -87,7 +87,7 @@ models:
                 </div>
               {% endwith %}
             {% endfor %}
-            {% endcomment %}
+            {% endverbatim %}
 
         </body>
 
