@@ -6,8 +6,6 @@ models:
         output_type: report
         run_type: discrete
       html: |
-        {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
-
         <!DOCTYPE html>
         <html lang="en">
 
@@ -61,6 +59,7 @@ models:
 
             <h2>Tables</h2>
             {% verbatim %}
+            {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
             {% for qmodel in query_models %}
               {% with table = this.DeRef(qmodel).RunEphemeralSelector(-1) %}
                 {{ table.StoreToJSON(this.DeRef(qmodel).GetWhtContext().OutputFolder()+"/reports/"+this.DeRef(qmodel).String()+".json") }}
