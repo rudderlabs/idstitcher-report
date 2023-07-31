@@ -51,8 +51,8 @@ models:
 
             <h2>Tables</h2>
             {% for qmodel in query_models %}
-              {{ table.StoreToJSON(qmodel.String()+".json") }}
               {% with table = qmodel.RunEphemeralSelector(-1) %}
+              {{ table.StoreToJSON(qmodel.String()+".json") }}
               <div class="table-container">
                   <h3>{{ qmodel.GetModel().Name() }}</h3>
                   <table>
