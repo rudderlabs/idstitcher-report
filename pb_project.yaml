@@ -17,7 +17,7 @@ model_folders:
  
 # Entities in this project and their ids.
 entities:
-  - name: user
+  - name: none
     id_stitcher: ""
 
 id_types:
