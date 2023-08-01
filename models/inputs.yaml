@@ -1,14 +1,2 @@
 inputs:
-  - ids:
-      - entity: user
-        select: user_id
-        type: user_id
-      - entity: user
-        select: anonymous_id
-        type: anonymous_id
-      - entity: user
-        select: lower(email)
-        type: email
-    name: rsIdentifies
-    occurred_at_col: timestamp
-    table: rs_profiles.demo_rs_identifies
+    name: id_stitcher
