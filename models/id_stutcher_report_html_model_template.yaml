@@ -62,7 +62,7 @@ models:
             {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
             {% for qmodel in query_models %}
               {% with table = this.DeRef(qmodel).RunEphemeralSelector(-1) %}
-                {{ table.StoreToJSON(this.DeRef(qmodel).GetWhtContext().OutputFolder()+"/reports/"+this.DeRef(qmodel).String()+".json") }}
+                {{ table.Save(this.DeRef(qmodel).GetWhtContext().OutputFolder()+"/reports/"+this.DeRef(qmodel).String()+".json") }}
                 <div class="table-container">
                     <h3>{{ this.DeRef(qmodel).GetModel().Name() }}</h3>
                     <table>
