@@ -1,2 +1,4 @@
 inputs:
   - name: id_stitcher
+    app_defaults:
+      table: analytics_db.blastradio_data
