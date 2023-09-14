@@ -136,7 +136,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.modelType == "id_stitcher_model" %}
             select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count, 
           other_id_type, count(other_id) as id_type_count
             from {{input_material1}} A inner join {{input_material2}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
