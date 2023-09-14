@@ -8,7 +8,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select sum(user_count) as user_count, max(other_id_count) as max_id_count,
               (sum(user_count * other_id_count)::float / sum(user_count)::float)::numeric(8,2) as avg_id_count
             from (
@@ -31,7 +31,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
             from {{input_material}}_INTERNAL_MAPPING
             group by {{input_material.Model.GetEntity().IdColumnName}}
@@ -72,7 +72,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select {{input_material.Model.GetEntity().IdColumnName}} as main_id, node_id, node_id_type, degree
             from (
               select m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type, count(*) as degree, row_number() over (partition by m.{{input_material.Model.GetEntity().IdColumnName}} order by count(*) desc) as rn
@@ -105,7 +105,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
             from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
             where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
@@ -120,7 +120,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") input_material3 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material1.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material1.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
             from {{input_material1}}_INTERNAL_EDGES A inner join {{input_material1}} B on A.id1 = B.other_id
             where id1 <> id2 AND id1 in (select node_id from {{input_material2}}) AND id2 in (select node_id from {{input_material2}})
@@ -136,7 +136,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count, 
           other_id_type, count(other_id) as id_type_count
             from {{input_material1}} A inner join {{input_material2}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
@@ -153,7 +153,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material.Model.ModelType() == "id_stitcher_model" %}
+          {% if input_material.Model.BaseWhtModel.ModelType() == "id_stitcher_model" %}
             select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
             from {{input_material1}}_INTERNAL_EDGES
             where id1 in (
