@@ -33,7 +33,7 @@ models:
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
           {% if input_material.Model.ModelType() == "id_stitcher" %}
             select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
-            from {{input_material}}_INTERNAL_MAPPING
+            from {{input_material}}_internal_mapping
             group by {{input_material.Model.GetEntity().IdColumnName}}
           {% endif %}
         {% endwith %}
