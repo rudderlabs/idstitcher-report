@@ -15,7 +15,7 @@ models:
               select other_id_count,  count(distinct {{input_material.Model.GetEntity().IdColumnName}}) as user_count
               from (
                 select {{input_material.Model.GetEntity().IdColumnName}}, count(other_id) as other_id_count
-                from {{input_material.String()}}
+                from {{input_material}}
                 group by {{input_material.Model.GetEntity().IdColumnName}}
               )
               group by other_id_count
