@@ -8,85 +8,103 @@ models:
       html: |
         <!DOCTYPE html>
         <html lang="en">
-
         <head>
-            <title>
-                ID Stitcher Report
-            </title>
+            <title>ID Stitcher Report</title>
             <style>
-                .table-container {
-                    margin-bottom: 3em;
-                }
+            .table-container {
+                margin-bottom: 3em;
+            }
 
-                .table-container table {
-                    border-collapse: collapse;
-                    width: 50%;
-                }
+            .table-container table {
+                border-collapse: collapse;
+                width: 50%;
+            }
 
-                .table-container th,
-                .table-container td {
-                    border: 1px solid #dddddd;
-                    text-align: left;
-                    padding: 0.5em;
-                }
+            .table-container th,
+            .table-container td {
+                border: 1px solid #dddddd;
+                text-align: left;
+                padding: 0.5em;
+            }
 
-                .table-container th {
-                    background-color: #f2f2f2;
-                }
+            .table-container th {
+                background-color: #f2f2f2;
+            }
 
-                img {
-                    max-width: 100%;
-                    height: auto;
-                    display: block;
-                    margin: 1em auto;
-                }
+            img {
+                max-width: 100%;
+                height: auto;
+                display: block;
+                margin: 1em auto;
+            }
             </style>
         </head>
 
-        <body style="text-align:center">
-            <h1 style="color: green">
-                Testing
-            </h1>
+        <body style="text-align: center">
+            <h1 style="color: green">Testing</h1>
+            {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
+            {% for qmodel in query_models %}{% with _ = this.DeRef(qmodel) %}{% endwith %}{% endfor %}
             {% verbatim %}
             <h2>ID Graph</h2>
             <p>ID Graph contains top clusters sorted by their size. Each cluster contains top nodes sorted by their degree (Only edges connecting these nodes are shown. These nodes might have more edges which are not shown here)</p>
             <img src="{{this.DbObjectName("id_graph.png")}}" alt="ID Graph">
-
             <h2>Biggest Cluster</h2>
             <p>Biggest Cluster graph contains top nodes sorted by their degree (Only edges connecting these nodes are shown. These nodes might have more edges which are not shown here)</p>
             <img src="{{this.DbObjectName("biggest_cluster.png")}}" alt="Biggest Cluster">
-
-
+            <h2>Biggest Cluster</h2>
+            <p>
+            Biggest Cluster graph contains top nodes sorted by their degree (Only
+            edges connecting these nodes are shown. These nodes might have more edges
+            which are not shown here)
+            </p>
             <h2>Tables</h2>
             {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
-            {% for qmodel in query_models %}
-              {% with table = this.DeRef(qmodel).RunEphemeralSelector(-1) %}
-                {{ table.Save(this.DeRef(qmodel).GetWhtContext().OutputFolder()+"/reports/"+this.DeRef(qmodel).Name()+".json") }}
-                <div class="table-container">
-                    <h3>{{ this.DeRef(qmodel).GetModel().Name() }}</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                {% for column in table.Columns %}
-                                  <th>{{ column }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in table.Results %}
-                            <tr>
-                                {% for value in row %}
-                                  <td>{{ value }}</td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-              {% endwith %}
-            {% endfor %}
+            <script>
+                function renderTable(jsonFileName, tableName) {
+                    fetch(jsonFileName)
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const containerDiv = document.createElement("div");
+                        containerDiv.classList.add("table-container");
+
+                        const heading = document.createElement("h3");
+                        heading.textContent = tableName;
+                        containerDiv.appendChild(heading);
+
+                        const table = document.createElement("table");
+
+                        const headerRow = document.createElement("tr");
+                        data.Columns.forEach((column) => {
+                            const th = document.createElement("th");
+                            th.textContent = column;
+                            headerRow.appendChild(th);
+                        });
+                        table.appendChild(headerRow);
+
+                        data.Results.forEach((rowData) => {
+                            const row = document.createElement("tr");
+                            rowData.forEach((value) => {
+                                const td = document.createElement("td");
+                                td.textContent = value;
+                                row.appendChild(td);
+                            });
+                            table.appendChild(row);
+                        });
+
+                        containerDiv.appendChild(table);
+
+                        document.body.appendChild(containerDiv);
+                    })
+                    .catch((error) => console.error("Error fetching JSON:", error));
+                }
+
+                window.onload = function () {
+                    {% for qmodel in query_models %}
+                        renderTable("{{ this.DeRef(qmodel).Name()+".json" }}", "{{ this.DeRef(qmodel).GetModel().Name() }}");
+                    {% endfor %}
+                };
+            </script>
             {% endverbatim %}
-
         </body>
-
         </html>
+
