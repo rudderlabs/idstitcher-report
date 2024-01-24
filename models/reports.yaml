@@ -97,10 +97,9 @@ models:
 
                 window.onload = function () {
                     {% for qmodel in query_models %}
-                        renderTable("{{ this.DeRef(qmodel).String() }}", "{{ this.DeRef(qmodel).GetModel().Name() }}");
+                        renderTable("{{ this.DeRef(qmodel) }}", "{{ this.DeRef(qmodel).GetModel() }}");
                     {% endfor %}
                 };
             </script>
         </body>
         </html>
-
