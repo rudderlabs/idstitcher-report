@@ -22,6 +22,11 @@ models:
             )
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: clusters
     model_type: sql_template
     model_spec:
@@ -37,6 +42,11 @@ models:
             group by {{input_material.Model.GetEntity().IdColumnName}}
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: clusters_sorted_by_size
     model_type: sql_template
     model_spec:
@@ -50,6 +60,11 @@ models:
           order by id_count desc
           limit 10
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: clusters_sorted_by_dist
     model_type: sql_template
     model_spec:
@@ -63,6 +78,11 @@ models:
           order by max_dist desc
           limit 10
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: top_max_degree_nodes
     model_type: sql_template
     model_spec:
@@ -96,6 +116,11 @@ models:
             where rn <= 10
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: edges_graph
     model_type: sql_template
     model_spec:
@@ -111,6 +136,11 @@ models:
             where id1 <> id2 AND id1 in (select node_id from {{input_material2.Name()}}) AND id2 in (select node_id from {{input_material2.Name()}})
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: edges_biggest_cluster
     model_type: sql_template
     model_spec:
@@ -127,6 +157,11 @@ models:
               AND B.{{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3.Name()}} limit 1)
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: id_type_count
     model_type: sql_template
     model_spec:
@@ -137,13 +172,18 @@ models:
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count, 
+            select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count,
           other_id_type, count(other_id) as id_type_count
             from {{input_material1}} A inner join {{input_material2.Name()}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
             group by A.{{input_material1.Model.GetEntity().IdColumnName}}, other_id_type
             order by total_id_count desc , id_type_count desc
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []
   - name: id_count
     model_type: sql_template
     model_spec:
@@ -151,7 +191,7 @@ models:
       materialization:
         output_type: ephemeral
         run_type: discrete
-      single_sql: |
+      single_sql: |-
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
             select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
@@ -165,3 +205,8 @@ models:
             order by 3 desc;
           {% endif %}
         {% endwith %}
+      contract:
+        is_optional: false
+        is_event_stream: false
+        with_entity_ids: []
+        with_columns: []

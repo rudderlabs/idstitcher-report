@@ -1,4 +1,9 @@
 inputs:
   - name: id_stitcher
+    contract:
+      is_optional: false
+      is_event_stream: false
+      with_entity_ids: []
+      with_columns: []
     app_defaults:
       table: NA
