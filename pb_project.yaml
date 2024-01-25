@@ -2,7 +2,7 @@
 name: idstitcher-report
 
 # Project's yaml schema version
-schema_version: 38
+schema_version: 39
 
 # WH Connection to use.
 connection: test
