@@ -13,3 +13,7 @@ model_folders:
 # Entities in this project and their ids.
 entities:
   - name: NA
+    id_types:
+      - na_id
+id_types:
+  - name: na_id
