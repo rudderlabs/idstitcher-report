@@ -55,12 +55,20 @@ models:
             which are not shown here)
             </p>
             <h2>Tables</h2>
+
+            <script src="{{ this.DeRef("models/clusters") }}"></script>
+            <script src="{{ this.DeRef("models/overall_stats") }}"></script>
+            <script src="{{ this.DeRef("models/clusters_sorted_by_size") }}"></script>
+            <script src="{{ this.DeRef("models/clusters_sorted_by_dist") }}"></script>
+            <script src="{{ this.DeRef("models/top_max_degree_nodes") }}"></script>
+            <script src="{{ this.DeRef("models/edges_graph") }}"></script>
+            <script src="{{ this.DeRef("models/edges_biggest_cluster") }}"></script>
+            <script src="{{ this.DeRef("models/id_type_count") }}"></script>
+            <script src="{{ this.DeRef("models/id_count") }}"></script>
+
             {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
             <script>
-                function renderTable(jsonFileName, tableName) {
-                    fetch(jsonFileName)
-                    .then((response) => response.json())
-                    .then((data) => {
+                function renderTable(data, tableName) {
                         const containerDiv = document.createElement("div");
                         containerDiv.classList.add("table-container");
 
@@ -91,13 +99,11 @@ models:
                         containerDiv.appendChild(table);
 
                         document.body.appendChild(containerDiv);
-                    })
-                    .catch((error) => console.error("Error fetching JSON:", error));
                 }
 
                 window.onload = function () {
                     {% for qmodel in query_models %}
-                        renderTable("{{ this.DeRef(qmodel) }}", "{{ this.DeRef(qmodel).GetModel() }}");
+                        renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
                     {% endfor %}
                 };
             </script>
