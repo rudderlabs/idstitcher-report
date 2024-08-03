@@ -210,3 +210,10 @@ models:
         is_event_stream: false
         with_entity_ids: []
         with_columns: []
+  - name: id_stitcher_report
+    model_type: report_model
+    model_spec:
+      materialization:
+        output_type: report
+        run_type: discrete
+      html: {{this.ReadFile("models/id_stitcher_report_tmpl.html")}}
