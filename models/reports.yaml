@@ -1,0 +1,50 @@
+models:
+  - name: id_stitcher_report
+    model_type: report_model
+    model_spec:
+      materialization:
+        output_type: report
+        run_type: discrete
+      html: |-
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>ID Stitcher Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    margin: 0;
+                    padding: 0;
+                    text-align: left;
+                }
+
+                h1, h2, h3 {
+                    color: #4CAF50;
+                }
+
+                .content {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 1em;
+                }
+
+                .table-of-contents {
+                    margin-bottom: 2em;
+                }
+
+                .table-container {
+                    margin-bottom: 3em;
+                }
+
+                .table-container table {
+                    border-collapse: collapse;
+                    width: 100%;
+                    margin-top: 1em;
+                }
+
+                .table-container th,
+                .table-container td {
