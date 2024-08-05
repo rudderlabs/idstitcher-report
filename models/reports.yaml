@@ -71,6 +71,7 @@ models:
             </style>
         </head>
         <body>
+            {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
             <div class="content">
                 <h1>ID Stitcher Report</h1>
 
