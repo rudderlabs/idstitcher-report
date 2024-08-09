@@ -112,6 +112,7 @@ models:
                 limit 10
               )
               group by m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type
+              order by degree desc
             ) as ranked
             where rn <= 10
           {% endif %}
@@ -172,8 +173,8 @@ models:
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select A.{{input_material1.Model.GetEntity().IdColumnName}}, max(B.id_count) as total_id_count,
-          other_id_type, count(other_id) as id_type_count
+            select A.{{input_material1.Model.GetEntity().IdColumnName}},
+          other_id_type, count(other_id) as id_type_count, max(B.id_count) as total_id_count
             from {{input_material1}} A inner join {{input_material2.Name()}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
             group by A.{{input_material1.Model.GetEntity().IdColumnName}}, other_id_type
             order by total_id_count desc , id_type_count desc
@@ -194,7 +195,7 @@ models:
       single_sql: |-
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select id1_type, id1, count(id1) as total_instances, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count
+            select id1_type, id1, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count, count(id1) as total_instances
             from {{input_material1}}_internal_edges
             where id1 in (
               select distinct other_id
@@ -202,7 +203,7 @@ models:
               where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2.Name()}})
               )
             group by 1, 2
-            order by 3 desc;
+            order by 4 desc;
           {% endif %}
         {% endwith %}
       contract:
