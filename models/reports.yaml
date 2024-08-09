@@ -5,4 +5,4 @@ models:
       materialization:
         output_type: report
         run_type: discrete
-      html: "{{this.ReadFile('models/id_stitcher_report_tmpl.html')}}"
+      html: "{%exec%}{{ this.ReadFile('models/id_stitcher_report_tmpl.html') }}{%endexec%}"
