@@ -17,13 +17,13 @@
         .content {
             max-width: 800px;
             padding: 1em;
-            margin-left: 220px; /* Room for TOC */
+            margin-left: 240px; /* Increased margin for better separation from TOC */
             margin-right: 20px;
         }
 
         .toc {
             position: fixed;
-            width: 200px;
+            width: 220px; /* Increased width for better readability */
             height: 100%;
             overflow-y: auto;
             background-color: #f4f4f4;
@@ -120,9 +120,6 @@
             <li><a href="#biggest-cluster">Biggest Cluster</a></li>
             <li><a href="#tables">Tables</a>
                 <ul>
-                    {% for qmodel in query_models %}
-                        <li><a href="#{{ this.DeRef(qmodel).GetModel().Name() }}">{{ this.DeRef(qmodel).GetModel() }}</a></li>
-                    {% endfor %}
                 </ul>
             </li>
         </ul>
