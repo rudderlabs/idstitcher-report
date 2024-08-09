@@ -60,6 +60,7 @@
             height: auto;
             display: block;
             margin: 1em 0;
+            cursor: pointer; /* Change cursor to pointer to indicate interactivity */
         }
 
         .intro {
@@ -72,6 +73,34 @@
             cursor: pointer;
             color: #007BFF;
             text-decoration: underline;
+        }
+
+        /* Popup styles */
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .popup img {
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            color: #fff;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -104,11 +133,11 @@
 
         <h2 id="id-graph">ID Graph</h2>
         <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
-        <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph">
+        <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
 
         <h2 id="biggest-cluster">Biggest Cluster</h2>
         <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
-        <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster">
+        <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
 
         <h2 id="tables">Tables</h2>
         <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
@@ -116,6 +145,12 @@
         {% for qmodel in query_models %}
             <script src={{ this.DeRef(qmodel) }}></script>
         {% endfor %}
+
+        <!-- Popup structure -->
+        <div class="popup" id="popup">
+            <span class="close" id="closePopup">&times;</span>
+            <img id="popupImg" src="" alt="Popup Image">
+        </div>
 
         <script>
             function renderTable(data, tableName) {
@@ -175,6 +210,27 @@
 
                 document.querySelector('.content').appendChild(containerDiv);
             }
+
+            // Image popup functionality
+            document.querySelectorAll('img.clickable').forEach(img => {
+                img.onclick = () => {
+                    const popup = document.getElementById('popup');
+                    const popupImg = document.getElementById('popupImg');
+                    popupImg.src = img.src;
+                    popup.style.display = 'flex';
+                };
+            });
+
+            document.getElementById('closePopup').onclick = () => {
+                document.getElementById('popup').style.display = 'none';
+            };
+
+            window.onclick = function(event) {
+                const popup = document.getElementById('popup');
+                if (event.target === popup) {
+                    popup.style.display = 'none';
+                }
+            };
 
             window.onload = function () {
                 {% for qmodel in query_models %}
