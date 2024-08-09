@@ -76,6 +76,9 @@
     </style>
 </head>
 <body>
+    <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
+    {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
+
     <div class="toc">
         <h2>Table of Contents</h2>
         <ul id="toc">
@@ -85,7 +88,7 @@
             <li><a href="#tables">Tables</a>
                 <ul>
                     {% for qmodel in query_models %}
-                        <li><a href="#{{ this.DeRef(qmodel).GetModel().Name() }}.toLowerCase().replace(/ /g, '-')">{{ this.DeRef(qmodel).GetModel() }}</a></li>
+                        <li><a href="#{{ this.DeRef(qmodel).GetModel().Name() }}">{{ this.DeRef(qmodel).GetModel() }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
