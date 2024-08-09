@@ -85,7 +85,7 @@
             <li><a href="#tables">Tables</a>
                 <ul>
                     {% for qmodel in query_models %}
-                        <li><a href="#{{ this.DeRef(qmodel).GetModel().toLowerCase().replace(/ /g, '-') }}">{{ this.DeRef(qmodel).GetModel() }}</a></li>
+                        <li><a href="#{{ this.DeRef(qmodel).GetModel().Name() }}.toLowerCase().replace(/ /g, '-')">{{ this.DeRef(qmodel).GetModel() }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
