@@ -76,11 +76,10 @@
     </style>
 </head>
 <body>
-    <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
     {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
 
     <div class="toc">
-        <h2>Table of Contents</h2>
+        <h2>Contents</h2>
         <ul id="toc">
             <li><a href="#introduction">Introduction</a></li>
             <li><a href="#id-graph">ID Graph</a></li>
@@ -96,6 +95,7 @@
     </div>
 
     <div class="content">
+        <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
         <h1>ID Stitcher Report</h1>
 
         <div id="introduction" class="intro">
