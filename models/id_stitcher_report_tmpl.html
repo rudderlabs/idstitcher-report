@@ -63,6 +63,8 @@
     </style>
 </head>
 <body>
+    <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
+    {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
     <div class="content">
         <h1>ID Stitcher Report</h1>
 
@@ -91,58 +93,57 @@
         <h2 id="tables">Tables</h2>
         <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
 
+        {% for qmodel in query_models %}
+            <script src={{ this.DeRef(qmodel) }}></script>
+        {% endfor %}
+
         <script>
-            function renderTable(jsonFileName, tableName) {
-                fetch(jsonFileName)
-                .then((response) => response.json())
-                .then((data) => {
-                    const containerDiv = document.createElement("div");
-                    containerDiv.classList.add("table-container");
-                    containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+            function renderTable(data, tableName) {
+                const containerDiv = document.createElement("div");
+                containerDiv.classList.add("table-container");
+                containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
 
-                    const heading = document.createElement("h3");
-                    heading.textContent = tableName;
-                    containerDiv.appendChild(heading);
+                const heading = document.createElement("h3");
+                heading.textContent = tableName;
+                containerDiv.appendChild(heading);
 
-                    const table = document.createElement("table");
+                const table = document.createElement("table");
 
-                    const headerRow = document.createElement("tr");
-                    data.Columns.forEach((column) => {
-                        const th = document.createElement("th");
-                        th.textContent = column;
-                        headerRow.appendChild(th);
+                const headerRow = document.createElement("tr");
+                data.Columns.forEach((column) => {
+                    const th = document.createElement("th");
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                data.Results.forEach((rowData) => {
+                    const row = document.createElement("tr");
+                    rowData.forEach((value) => {
+                        const td = document.createElement("td");
+                        td.textContent = value;
+                        row.appendChild(td);
                     });
-                    table.appendChild(headerRow);
+                    table.appendChild(row);
+                });
 
-                    data.Results.forEach((rowData) => {
-                        const row = document.createElement("tr");
-                        rowData.forEach((value) => {
-                            const td = document.createElement("td");
-                            td.textContent = value;
-                            row.appendChild(td);
-                        });
-                        table.appendChild(row);
-                    });
+                containerDiv.appendChild(table);
 
-                    containerDiv.appendChild(table);
+                document.querySelector('.content').appendChild(containerDiv);
 
-                    document.querySelector('.content').appendChild(containerDiv);
-
-                    // Add to Table of Contents
-                    const tocList = document.getElementById('toc');
-                    const tocItem = document.createElement('li');
-                    const tocLink = document.createElement('a');
-                    tocLink.href = `#${containerDiv.id}`;
-                    tocLink.textContent = tableName;
-                    tocItem.appendChild(tocLink);
-                    tocList.appendChild(tocItem);
-                })
-                .catch((error) => console.error("Error fetching JSON:", error));
+                // Add to Table of Contents
+                const tocList = document.getElementById('toc');
+                const tocItem = document.createElement('li');
+                const tocLink = document.createElement('a');
+                tocLink.href = `#${containerDiv.id}`;
+                tocLink.textContent = tableName;
+                tocItem.appendChild(tocLink);
+                tocList.appendChild(tocItem);
             }
 
             window.onload = function () {
                 {% for qmodel in query_models %}
-                    renderTable("{{ this.DeRef(qmodel) }}", "{{ this.DeRef(qmodel).GetModel() }}");
+                    renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
                 {% endfor %}
             };
         </script>
