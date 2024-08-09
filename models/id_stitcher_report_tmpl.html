@@ -11,21 +11,27 @@
             color: #333;
             margin: 0;
             padding: 0;
-            text-align: left;
-        }
-
-        h1, h2, h3 {
-            color: #4CAF50;
+            display: flex;
         }
 
         .content {
             max-width: 800px;
-            margin: 0 auto;
             padding: 1em;
+            margin-left: 220px; /* Room for TOC */
         }
 
-        .table-of-contents {
-            margin-bottom: 2em;
+        .toc {
+            position: fixed;
+            width: 200px;
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            padding: 1em;
+            box-shadow: 2px 0px 5px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 {
+            color: #4CAF50;
         }
 
         .table-container {
@@ -60,23 +66,34 @@
             margin-bottom: 2em;
             font-style: italic;
         }
+
+        .show-more {
+            margin-top: 1em;
+            cursor: pointer;
+            color: #007BFF;
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
-    {% set query_models = ["models/clusters", "models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"] %}
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ul id="toc">
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#id-graph">ID Graph</a></li>
+            <li><a href="#biggest-cluster">Biggest Cluster</a></li>
+            <li><a href="#tables">Tables</a>
+                <ul>
+                    {% for qmodel in query_models %}
+                        <li><a href="#{{ this.DeRef(qmodel).GetModel().toLowerCase().replace(/ /g, '-') }}">{{ this.DeRef(qmodel).GetModel() }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    </div>
+
     <div class="content">
         <h1>ID Stitcher Report</h1>
-
-        <div class="table-of-contents">
-            <h2>Table of Contents</h2>
-            <ul id="toc">
-                <li><a href="#introduction">Introduction</a></li>
-                <li><a href="#id-graph">ID Graph</a></li>
-                <li><a href="#biggest-cluster">Biggest Cluster</a></li>
-                <li><a href="#tables">Tables</a></li>
-            </ul>
-        </div>
 
         <div id="introduction" class="intro">
             <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
@@ -104,7 +121,7 @@
                 containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
 
                 const heading = document.createElement("h3");
-                heading.textContent = tableName;
+                heading.textContent = `${tableName} (${data.Results.length} rows)`;
                 containerDiv.appendChild(heading);
 
                 const table = document.createElement("table");
@@ -117,28 +134,43 @@
                 });
                 table.appendChild(headerRow);
 
-                data.Results.forEach((rowData) => {
-                    const row = document.createElement("tr");
-                    rowData.forEach((value) => {
-                        const td = document.createElement("td");
-                        td.textContent = value;
-                        row.appendChild(td);
-                    });
-                    table.appendChild(row);
-                });
+                const rowsToShow = 100;
+                let rowsDisplayed = 0;
+
+                const addRows = (start, end) => {
+                    for (let i = start; i < end && i < data.Results.length; i++) {
+                        const row = document.createElement("tr");
+                        data.Results[i].forEach((value) => {
+                            const td = document.createElement("td");
+                            td.textContent = value;
+                            row.appendChild(td);
+                        });
+                        table.appendChild(row);
+                    }
+                };
+
+                addRows(0, rowsToShow);
+                rowsDisplayed += rowsToShow;
 
                 containerDiv.appendChild(table);
 
-                document.querySelector('.content').appendChild(containerDiv);
+                if (data.Results.length > rowsDisplayed) {
+                    const showMoreButton = document.createElement('div');
+                    showMoreButton.classList.add('show-more');
+                    showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                    showMoreButton.onclick = () => {
+                        addRows(rowsDisplayed, rowsDisplayed + 50);
+                        rowsDisplayed += 50;
+                        if (rowsDisplayed >= data.Results.length) {
+                            showMoreButton.style.display = 'none';
+                        } else {
+                            showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                        }
+                    };
+                    containerDiv.appendChild(showMoreButton);
+                }
 
-                // Add to Table of Contents
-                const tocList = document.getElementById('toc');
-                const tocItem = document.createElement('li');
-                const tocLink = document.createElement('a');
-                tocLink.href = `#${containerDiv.id}`;
-                tocLink.textContent = tableName;
-                tocItem.appendChild(tocLink);
-                tocList.appendChild(tocItem);
+                document.querySelector('.content').appendChild(containerDiv);
             }
 
             window.onload = function () {
