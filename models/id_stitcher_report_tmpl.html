@@ -18,6 +18,7 @@
             max-width: 800px;
             padding: 1em;
             margin-left: 220px; /* Room for TOC */
+            margin-right: 20px;
         }
 
         .toc {
@@ -31,7 +32,7 @@
         }
 
         h1, h2, h3 {
-            color: #4CAF50;
+            color: #1F70C1; /* IBM Blue */
         }
 
         .table-container {
@@ -101,6 +102,10 @@
             font-size: 30px;
             color: #fff;
             cursor: pointer;
+        }
+
+        ul ul {
+            margin-left: 15px; /* Reduce the margin for nested lists */
         }
     </style>
 </head>
@@ -209,6 +214,15 @@
                 }
 
                 document.querySelector('.content').appendChild(containerDiv);
+
+                // Add to Table of Contents
+                const tocList = document.getElementById('toc');
+                const tocItem = document.createElement('li');
+                const tocLink = document.createElement('a');
+                tocLink.href = `#${containerDiv.id}`;
+                tocLink.textContent = tableName;
+                tocItem.appendChild(tocLink);
+                tocList.querySelector('ul').appendChild(tocItem);
             }
 
             // Image popup functionality
