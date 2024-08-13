@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ID Stitcher Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        .content {
+            max-width: 800px;
+            padding: 1em;
+            margin-left: 240px; /* Increased margin for better separation from TOC */
+            margin-right: 20px;
+        }
+
+        .toc {
+            position: fixed;
+            width: 220px; /* Increased width for better readability */
+            height: 100%;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            padding: 1em;
+            box-shadow: 2px 0px 5px rgba(0,0,0,0.1);
+        }
+
+        h1, h2, h3 {
+            color: #1F70C1; /* IBM Blue */
+        }
+
+        .table-container {
+            margin-bottom: 3em;
+        }
+
+        .table-container table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 1em;
+        }
+
+        .table-container th,
+        .table-container td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 0.5em;
+        }
+
+        .table-container th {
+            background-color: #f2f2f2;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 1em 0;
+            cursor: pointer; /* Change cursor to pointer to indicate interactivity */
+        }
+
+        .intro {
+            margin-bottom: 2em;
+            font-style: italic;
+        }
+
+        .show-more {
+            margin-top: 1em;
+            cursor: pointer;
+            color: #007BFF;
+            text-decoration: underline;
+        }
+
+        /* Popup styles */
+        .popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .popup img {
+            max-width: 90%;
+            max-height: 90%;
+        }
+
+        .close {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 30px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        ul ul {
+            margin-left: 15px; /* Reduce the margin for nested lists */
+        }
+    </style>
+</head>
+<body>
+    {% set query_models = ["models/overall_stats", "models/clusters", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count"m] %}
+
+    <div class="toc">
+        <h2>Contents</h2>
+        <ul id="toc">
+            <li><a href="#introduction">Introduction</a></li>
+            <li><a href="#id-graph">ID Graph</a></li>
+            <li><a href="#biggest-cluster">Biggest Cluster</a></li>
+            <li><a href="#tables">Tables</a>
+                <ul>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="content">
+        <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
+        <h1>ID Stitcher Report</h1>
+
+        <div id="introduction" class="intro">
+            <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
+        </div>
+
+        <h2 id="id-graph">ID Graph</h2>
+        <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
+        <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
+
+        <h2 id="biggest-cluster">Biggest Cluster</h2>
+        <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
+        <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
+
+        <h2 id="tables">Tables</h2>
+        <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
+
+        {% for qmodel in query_models %}
+            <script src={{ this.DeRef(qmodel) }}></script>
+        {% endfor %}
+
+        <!-- Popup structure -->
+        <div class="popup" id="popup">
+            <span class="close" id="closePopup">&times;</span>
+            <img id="popupImg" src="" alt="Popup Image">
+        </div>
+
+        <script>
+            function renderTable(data, tableName) {
+                const containerDiv = document.createElement("div");
+                containerDiv.classList.add("table-container");
+                containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+
+                const heading = document.createElement("h3");
+                heading.textContent = `${tableName} (${data.Results.length} rows)`;
+                containerDiv.appendChild(heading);
+
+                const table = document.createElement("table");
+
+                const headerRow = document.createElement("tr");
+                data.Columns.forEach((column) => {
+                    const th = document.createElement("th");
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+                table.appendChild(headerRow);
+
+                const rowsToShow = 100;
+                let rowsDisplayed = 0;
+
+                const addRows = (start, end) => {
+                    for (let i = start; i < end && i < data.Results.length; i++) {
+                        const row = document.createElement("tr");
+                        data.Results[i].forEach((value) => {
+                            const td = document.createElement("td");
+                            td.textContent = value;
+                            row.appendChild(td);
+                        });
+                        table.appendChild(row);
+                    }
+                };
+
+                addRows(0, rowsToShow);
+                rowsDisplayed += rowsToShow;
+
+                containerDiv.appendChild(table);
+
+                if (data.Results.length > rowsDisplayed) {
+                    const showMoreButton = document.createElement('div');
+                    showMoreButton.classList.add('show-more');
+                    showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                    showMoreButton.onclick = () => {
+                        addRows(rowsDisplayed, rowsDisplayed + 50);
+                        rowsDisplayed += 50;
+                        if (rowsDisplayed >= data.Results.length) {
+                            showMoreButton.style.display = 'none';
+                        } else {
+                            showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                        }
+                    };
+                    containerDiv.appendChild(showMoreButton);
+                }
+
+                document.querySelector('.content').appendChild(containerDiv);
+
+                // Add to Table of Contents
+                const tocList = document.getElementById('toc');
+                const tocItem = document.createElement('li');
+                const tocLink = document.createElement('a');
+                tocLink.href = `#${containerDiv.id}`;
+                tocLink.textContent = tableName;
+                tocItem.appendChild(tocLink);
+                tocList.querySelector('ul').appendChild(tocItem);
+            }
+
+            // Image popup functionality
+            document.querySelectorAll('img.clickable').forEach(img => {
+                img.onclick = () => {
+                    const popup = document.getElementById('popup');
+                    const popupImg = document.getElementById('popupImg');
+                    popupImg.src = img.src;
+                    popup.style.display = 'flex';
+                };
+            });
+
+            document.getElementById('closePopup').onclick = () => {
+                document.getElementById('popup').style.display = 'none';
+            };
+
+            window.onclick = function(event) {
+                const popup = document.getElementById('popup');
+                if (event.target === popup) {
+                    popup.style.display = 'none';
+                }
+            };
+
+            window.onload = function () {
+                {% for qmodel in query_models %}
+                    renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
+                {% endfor %}
+            };
+        </script>
+    </div>
+</body>
+</html>
