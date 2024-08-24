@@ -57,6 +57,58 @@
         const nc = 1000
         const ec = 3000
 
+        const allNodes = Array.from({ length: nc }, (_, i) => ({ id: `n${i}` }));
+        const allLinks = Array.from({ length: ec }, () => {
+            src = Math.floor(Math.random() * (nc-1))
+            tgt = Math.floor(Math.random() * (nc-1))
+            if (src > tgt) {
+                temp = src;src = tgt; tgt = temp;
+            }
+            tgt = tgt + 1
+
+            id = `e_${src}_${tgt}`
+	    retval = ({
+                id:     id,
+                source: allNodes[src],
+                target: allNodes[tgt]
+            })
+            return retval
+        });
+
+        let loadedNodes = {};         // Store currently loaded nodes
+                                      // Type: NodeId -> Node
+        let loadedLinksAdjlist = {};  // Store currently loaded links
+                                      // Type: Nbr1Id -> (Nbr2Id -> Link)
+        let loadedLinks = {}
+                                      // Type: EdgeId -> Link
+
+        function addToLoadedNodes(node){
+            loadedNodes[node.id] = node;  // Copy nodes to loadedNodes
+
+            // Initialize an empty array in loadedLinksAdjlist for each node
+            if (!loadedLinksAdjlist[node.id]) {
+                loadedLinksAdjlist[node.id] = {};
+            }
+        }
+
+        function addToLoadedLinks(edge){
+            if (!loadedNodes[edge.source.id]) {
+                addToLoadedNodes(edge.source)
+            }
+            loadedLinksAdjlist[edge.source.id][edge.target.id] = edge;
+
+            if (!loadedNodes[edge.target.id]) {
+                addToLoadedNodes(edge.target)
+            }
+            loadedLinksAdjlist[edge.target.id][edge.source.id] = edge;
+
+            loadedLinks[edge.id] = edge
+        }
+
+        // Populate loadedNodes, loadedLinks and loadedLinksAdjlist from allNodes and allLinks
+        allNodes.forEach(node => addToLoadedNodes(node));
+        allLinks.forEach(edge => addToLoadedLinks(edge));
+
         const mySvg = document.getElementById('mySvg');
         const panGroup = document.getElementById('panGroup');
         const text = document.getElementById('centerCoords');
@@ -75,15 +127,15 @@
             .call(zoom)
             .append("g");
 
-       // Append a rectangle as a bounding box
-       //svg.append("rect")
-       //    .attr("x", 0)
-       //    .attr("y", 0)
-       //    .attr("width", width)
-       //    .attr("height", height)
-       //    .attr("fill", "none")
-       //    .attr("stroke", "black")
-       //    .attr("stroke-width", 2);  // Adjust stroke width as needed
+        // Append a rectangle as a bounding box
+        //svg.append("rect")
+        //    .attr("x", 0)
+        //    .attr("y", 0)
+        //    .attr("width", width)
+        //    .attr("height", height)
+        //    .attr("fill", "none")
+        //    .attr("stroke", "black")
+        //    .attr("stroke-width", 2);  // Adjust stroke width as needed
 
         svg.append("defs").append("marker")
             .attr("id", "arrowhead")
@@ -99,29 +151,10 @@
             .attr("fill", "#999")
             .style("stroke", "none");
 
-        const nodes = Array.from({ length: nc }, (_, i) => ({ id: `n${i}` }));
-        const links = Array.from({ length: ec }, () => {
-            src = Math.floor(Math.random() * (nc-1))
-            tgt = Math.floor(Math.random() * (nc-1))
-            if (src > tgt) {
-                temp = src;src = tgt; tgt = temp;
-            }
-            tgt = tgt + 1
-
-            id = `e_${src}_${tgt}`
-	    retval = ({
-                id:     id,
-                source: nodes[src],
-                target: nodes[tgt]
-            })
-            return retval
-        });
-
-
-        const simulation = d3.forceSimulation(nodes)
+        const simulation = d3.forceSimulation(Object.values(loadedNodes))
             .force(
                 "link",
-                d3.forceLink(links)
+                d3.forceLink(Object.values(loadedLinks))
                   .id(d => d.id)
                   .distance(20))
             .force("charge", d3.forceManyBody().strength(-20))
@@ -132,7 +165,7 @@
         const link = d3.select(panGroup).append("g")
                           .attr("class", "links")
                         .selectAll("line")
-                          .data(links)
+                          .data(Object.values(loadedLinks))
                           .enter()
                           .append("line")
                             .attr("stroke-width", 2)
@@ -144,7 +177,7 @@
         const node = d3.select(panGroup).append("g")
                           .attr("class", "nodes")
                         .selectAll("g")
-                          .data(nodes)
+                          .data(Object.values(loadedNodes))
                           .enter().append("g")
                             .attr("class", "node")
                             .on("click", function(event, d) {
@@ -192,11 +225,11 @@
 
         function searchGraph() {
             const searchTerm = document.getElementById('search').value;
-            const foundNode = nodes.find(node => node.id === searchTerm);
+            const foundNode = loadedNodes[searchTerm];
             if (foundNode) {
                 selectNode(foundNode);
             } else {
-                const foundLink = links.find(link => link.id === searchTerm);
+                const foundLink = loadedLinks[searchTerm];
                 if (foundLink) {
                     selectEdge(foundLink);
                 } else {
@@ -284,7 +317,7 @@
 
                     const boxWidth = Math.max(0.1, x1 - x0);
                     const boxHeight = Math.max(0.1, y1 - y0);
- 
+
                     const scale = 0.8*Math.min(width / boxWidth, height / boxHeight);
 
                     const translateX = (width - scale * (x0 + x1)) / 2;
@@ -326,7 +359,7 @@
             selectedNode = nodeData;
 
             // Identify neighbors and add them to the selectedNeighbors set
-            links.forEach(link => {
+            Object.values(loadedLinksAdjlist[nodeData.id]).forEach(link => {
                 if (link.source === nodeData) {
                     selectNbr(link, link.target);
                 } else if (link.target === nodeData) {
@@ -338,7 +371,7 @@
             simulation
                 .force(
                     "link",
-                    d3.forceLink(links.filter(link => link.source == nodeData || link.target == nodeData))
+                    d3.forceLink(Object.values(loadedLinksAdjlist[nodeData.id]))
                         .id(d => d.id)
                         .distance(50))
                 .force(
@@ -355,7 +388,6 @@
         }
 
         function selectEdge(edgeData) {
-            console.log(edgeData)
             toggleCase = (edgeData == selectedEdge)
 
             // De-select any previously selected node or edge
@@ -376,27 +408,25 @@
             selectedEdge = edgeData;
 
             // Identify all neighbors of the source and target nodes and add them to the selectedNeighbors set
-            links.forEach(link => {
-                if (link.source != edgeData.source || link.target != edgeData.target) {
-                    tocolor = null
-                    if (link.source === edgeData.source || link.source === edgeData.target)
-                        tocolor = link.target 
-                    else if (link.target === edgeData.source || link.target === edgeData.target) {
-                        tocolor = link.source 
-                    }
-                    if (tocolor) {
-                        // Highlight the nbr and color selected edge in blue
-                        selectNbr(link, tocolor);
-                    }
+            nbrLinks = [edgeData]
+            Object.entries(loadedLinksAdjlist[edgeData.source.id]).forEach(([altTargetId, link]) => {
+                if (altTargetId != edgeData.target.id) {
+                    selectNbr(link, loadedNodes[altTargetId]);
+                    nbrLinks.push(link);
                 }
-            });
+            })
+            Object.entries(loadedLinksAdjlist[edgeData.target.id]).forEach(([altSourceId, link]) => {
+                if (altSourceId != edgeData.source.id) {
+                    selectNbr(link, loadedNodes[altSourceId]);
+                    nbrLinks.push(link);
+                }
+            })
 
             // Apply stronger repulsive force limited to a certain distance for neighbors
             simulation
                 .force(
                     "link",
-                    d3.forceLink(links.filter(link => (link.source == edgeData.source) || (link.target == edgeData.target)
-                                                      || (link.target == edgeData.source) || (link.source == edgeData.target)))
+                    d3.forceLink(nbrLinks)
                         .id(d => d.id)
                         .distance(d => d.source.id in selectedNeighbors || d.target.id in selectedNeighbors ? 50 : 80)
                         )
@@ -413,7 +443,7 @@
             showBoundingBox();
         }
 
-        selectNode(nodes[0])
+        selectNode(Object.values(loadedNodes)[0])
 
     </script>
 </body>
