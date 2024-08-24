@@ -206,7 +206,7 @@
         }
         let selectedNode = null; // Keep track of the currently selected node
         let selectedEdge = null; // Keep track of the currently selected edge
-        let selectedNeighbors = new Set(); // Keep track of the selected neighbors
+        let selectedNeighbors = {}; // Keep track of the selected neighbors
 
         function colorNode(node, circleColor, textColor) {
             nbrElement = d3.selectAll(".node").filter(d => d === node)
@@ -214,11 +214,20 @@
             nbrElement.select("text").attr("stroke", textColor).attr("stroke-width", "1px").attr("font-size", "11px")
         }
 
+        function colorEdge(edge, strokeColor) {
+            // Highlight the selected edge in blue
+            edgeElement = d3.selectAll(".link").filter(d => d == edge)
+            edgeElement.style("stroke", strokeColor);
+        }
+
         function deSelectNbrs() {
-                selectedNeighbors.forEach(neighbor => {
-                    colorNode(neighbor, "lightgreen", "DarkBlue")
+                Object.values(selectedNeighbors).forEach(ls => {
+                    nbr = ls[0]
+                    nbrEdge = ls[1]
+                    colorNode(nbr, "lightgreen", "DarkBlue")
+                    colorEdge(nbrEdge, "lightgray")
                 });
-                selectedNeighbors.clear();
+                selectedNeighbors = {};
         }
 
         function deSelectNode() {
@@ -230,30 +239,22 @@
                 // Reset the color of edges connected to the previously selected node to light gray
                 d3.selectAll(".link")
                     .attr("stroke", "lightgray");
-
-                // Clear the selected neighbors set and reset their colors
-                deSelectNbrs()
             }
         }
 
         function deSelectEdge() {
             if (selectedEdge) {
-                // Reset the selected edge's color to light gray
-                d3.selectAll(".link")
-                    .filter(d => d === selectedEdge)
-                    .attr("stroke", "lightgray");
+                colorEdge(selectedEdge, "lightgray");
                 colorNode(selectedEdge.source, "lightgreen", "DarkBlue")
                 colorNode(selectedEdge.target, "lightgreen", "DarkBlue")
                 selectedEdge = null; // Clear the selected edge
-
-                // Clear the selected neighbors set and reset their colors
-                deSelectNbrs()
             }
         }
 
-        function selectNbr(selectedNeighbor) {
+        function selectNbr(nbrEdge, selectedNeighbor) {
+            colorEdge(nbrEdge, "crimson");
             colorNode(selectedNeighbor, "lightyellow", "black");
-            selectedNeighbors.add(selectedNeighbor);
+            selectedNeighbors[selectedNeighbor.id] = [selectedNeighbor, nbrEdge];
         }
 
         function showBoundingBox() {
@@ -272,9 +273,10 @@
                     ys.add(selectedEdge.source.y).add(selectedEdge.target.y)
                 }
 
-                selectedNeighbors.forEach(neighbor => {
-                    xs.add(neighbor.x)
-                    ys.add(neighbor.y)
+                Object.values(selectedNeighbors).forEach(ls => {
+                    nbr = ls[0]
+                    xs.add(nbr.x)
+                    ys.add(nbr.y)
                 });
 
                 if (xs.size >= 1) {
@@ -312,29 +314,25 @@
             deSelectNode();
             deSelectEdge();
 
+            // Clear the selected neighbors set and reset their colors
+            deSelectNbrs();
+
             if (toggleCase) {
                 return;
             }
 
-            // Highlight the selected node's text
+            // Highlight the selected node in pink/red.
             colorNode(nodeData, "pink", "red")
             selectedNode = nodeData;
 
             // Identify neighbors and add them to the selectedNeighbors set
-            selectedNeighbors.clear();
             links.forEach(link => {
                 if (link.source === nodeData) {
-                    selectNbr(link.target);
+                    selectNbr(link, link.target);
                 } else if (link.target === nodeData) {
-                    selectNbr(link.source);
+                    selectNbr(link, link.source);
                 }
             });
-
-            // Apply blue color to edges connecting selected node to its neighbors and between neighbors
-            d3.selectAll(".link")
-                .attr("stroke", d => {
-                    return (selectedNeighbors.has(d.source) && selectedNeighbors.has(d.target)) ? "blue" : "lightgray";
-                });
 
             // Apply stronger repulsive force limited to a certain distance for neighbors
             simulation
@@ -347,8 +345,8 @@
                     "charge",
                     d3.forceManyBody()
                          .strength(-600)
-                        //  .strength(d => selectedNeighbors.has(d) ? -600 : -200)  // 3x repulsive force for neighbors
-                        //  .distanceMax(d => selectedNeighbors.has(d) ? 100 : Infinity)) // Limit force to 100 units for neighbors
+                        //  .strength(d => d.id in selectedNeighbors ? -600 : -200)  // 3x repulsive force for neighbors
+                        //  .distanceMax(d => d.id in selectedNeighbors ? 100 : Infinity)) // Limit force to 100 units for neighbors
                 )
                 .alpha(1)
                 .restart();
@@ -357,21 +355,22 @@
         }
 
         function selectEdge(edgeData) {
+            console.log(edgeData)
             toggleCase = (edgeData == selectedEdge)
 
             // De-select any previously selected node or edge
             deSelectNode();
             deSelectEdge();
 
+            // Clear the selected neighbors set and reset their colors
+            deSelectNbrs()
+
             if (toggleCase) {
                 return;
             }
 
-            // Highlight the selected edge in blue
-            d3.selectAll(".link")
-                .filter(d => d == edgeData)
-                .attr("stroke", "blue");
-
+            // Highlight the selected edge in blue and its nodes pink/red.
+            colorEdge(edgeData, "crimson");
             colorNode(edgeData.source, "pink", "red")
             colorNode(edgeData.target, "pink", "red")
             selectedEdge = edgeData;
@@ -379,19 +378,18 @@
             // Identify all neighbors of the source and target nodes and add them to the selectedNeighbors set
             links.forEach(link => {
                 if (link.source != edgeData.source || link.target != edgeData.target) {
+                    tocolor = null
                     if (link.source === edgeData.source || link.source === edgeData.target)
-                        selectNbr(link.target);
+                        tocolor = link.target 
                     else if (link.target === edgeData.source || link.target === edgeData.target) {
-                        selectNbr(link.source);
+                        tocolor = link.source 
                     }
-		}
+                    if (tocolor) {
+                        // Highlight the nbr and color selected edge in blue
+                        selectNbr(link, tocolor);
+                    }
+                }
             });
-
-            // Apply blue color to edges connecting the source/target of the selected edge to their neighbors
-            d3.selectAll(".link")
-                .attr("stroke", d => {
-                    return (selectedNeighbors.has(d.source) && selectedNeighbors.has(d.target)) ? "blue" : "lightgray";
-                });
 
             // Apply stronger repulsive force limited to a certain distance for neighbors
             simulation
@@ -400,14 +398,14 @@
                     d3.forceLink(links.filter(link => (link.source == edgeData.source) || (link.target == edgeData.target)
                                                       || (link.target == edgeData.source) || (link.source == edgeData.target)))
                         .id(d => d.id)
-                        .distance(d => selectedNeighbors.has(d.source) || selectedNeighbors.has(d.target) ? 50 : 80)
+                        .distance(d => d.source.id in selectedNeighbors || d.target.id in selectedNeighbors ? 50 : 80)
                         )
                 .force(
                     "charge",
                     d3.forceManyBody()
                         .strength(-20)
-                        //  .strength(d => selectedNeighbors.has(d) ? -200)  // 3x repulsive force for neighbors
-                        //  .distanceMax(d => selectedNeighbors.has(d) ? 100 : Infinity) // Limit force to 100 units for neighbors
+                        //  .strength(d => d.id in selectedNeighbors ? -200)  // 3x repulsive force for neighbors
+                        //  .distanceMax(d => d.id in selectedNeighbors 100 : Infinity) // Limit force to 100 units for neighbors
                     )
                 .alpha(1)
                 .restart();
