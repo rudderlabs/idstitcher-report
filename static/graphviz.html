@@ -54,60 +54,125 @@
         const width = 960;
         const height = 600;
 
-        const nc = 1000
-        const ec = 3000
+        const full_node_count = 1000;
+        const full_edge_count = 3000;
 
-        const allNodes = Array.from({ length: nc }, (_, i) => ({ id: `n${i}` }));
-        const allLinks = Array.from({ length: ec }, () => {
-            src = Math.floor(Math.random() * (nc-1))
-            tgt = Math.floor(Math.random() * (nc-1))
-            if (src > tgt) {
-                temp = src;src = tgt; tgt = temp;
-            }
-            tgt = tgt + 1
+        const inital_nodecount = 100;
+        const initial_degree = 5;
 
-            id = `e_${src}_${tgt}`
-	    retval = ({
-                id:     id,
-                source: allNodes[src],
-                target: allNodes[tgt]
+        var allNodes = [], allLinks = [], allNbrsById = {}
+        function initFullGraph() {
+            allNodes = Array.from({ length: full_node_count }, (_, i) => ({ id: `n${i}` }));
+            allLinks = Array.from({ length: full_edge_count }, () => {
+                src = Math.floor(Math.random() * (full_node_count-1))
+                tgt = Math.floor(Math.random() * (full_node_count-1))
+                if (src > tgt) {
+                    temp = src;src = tgt; tgt = temp;
+                }
+                tgt = tgt + 1
+
+                id = `e_${src}_${tgt}`
+	        retval = ({
+                    id:     id,
+                    source: allNodes[src],
+                    target: allNodes[tgt]
+                })
+                return retval
+            });
+            allNbrsById = {}
+            allLinks.forEach(link => {
+                if (!allNbrsById[link.source.id]) {
+                    allNbrsById[link.source.id] = [];
+                }
+                if (!allNbrsById[link.target.id]) {
+                    allNbrsById[link.target.id] = [];
+                }
+                allNbrsById[link.source.id].push({l: link, n: link.target});
+                allNbrsById[link.target.id].push({l: link, n: link.source});
             })
-            return retval
-        });
+        }
+        initFullGraph();
 
-        let loadedNodes = {};         // Store currently loaded nodes
-                                      // Type: NodeId -> Node
-        let loadedLinksAdjlist = {};  // Store currently loaded links
-                                      // Type: Nbr1Id -> (Nbr2Id -> Link)
-        let loadedLinks = {}
-                                      // Type: EdgeId -> Link
-
+        let loadedNodes = {};         // Store currently loaded nodes.  Type: NodeId -> Node
+        let loadedLinksAdjlist = {};  // Store currently loaded links.  Type: Nbr1Id -> (Nbr2Id -> Link)
+        let loadedLinks = {}          //                                Type: EdgeId -> Link
         function addToLoadedNodes(node){
-            loadedNodes[node.id] = node;  // Copy nodes to loadedNodes
+            if (!loadedNodes[node.id]) {
+                loadedNodes[node.id] = node;  // Copy nodes to loadedNodes
 
-            // Initialize an empty array in loadedLinksAdjlist for each node
-            if (!loadedLinksAdjlist[node.id]) {
-                loadedLinksAdjlist[node.id] = {};
+                // Initialize an empty array in loadedLinksAdjlist for each node
+                if (!loadedLinksAdjlist[node.id]) {
+                    loadedLinksAdjlist[node.id] = {};
+                }
             }
         }
 
-        function addToLoadedLinks(edge){
-            if (!loadedNodes[edge.source.id]) {
-                addToLoadedNodes(edge.source)
+        function addToLoadedLinks(link){
+            if (!loadedNodes[link.source.id]) {
+                addToLoadedNodes(link.source)
             }
-            loadedLinksAdjlist[edge.source.id][edge.target.id] = edge;
+            loadedLinksAdjlist[link.source.id][link.target.id] = link;
 
-            if (!loadedNodes[edge.target.id]) {
-                addToLoadedNodes(edge.target)
+            if (!loadedNodes[link.target.id]) {
+                addToLoadedNodes(link.target)
             }
-            loadedLinksAdjlist[edge.target.id][edge.source.id] = edge;
+            loadedLinksAdjlist[link.target.id][link.source.id] = link;
 
-            loadedLinks[edge.id] = edge
+            loadedLinks[link.id] = link
         }
 
-        // Populate loadedNodes, loadedLinks and loadedLinksAdjlist from allNodes and allLinks
-        allNodes.forEach(node => addToLoadedNodes(node));
-        allLinks.forEach(edge => addToLoadedLinks(edge));
+        function loadInitialGraph(seedNodes = []) {
+            let nodeQueue = [...seedNodes];  // Initialize nodeQueue with seed nodes
+            let nodesProcessed = 0;
+
+            while (nodeQueue.length > 0 || (nodesProcessed < inital_nodecount && Object.keys(loadedNodes).length < Object.keys(allNodes).length)) {
+                // If the queue is empty and we haven't processed 'inital_nodecount' nodes, add arbitrary nodes
+                if (nodeQueue.length === 0) {
+                    chosenIndex = Math.floor(Math.random() * allNodes.length);
+                    for (let i = 0;i < allNodes.length; i++) {
+                        curChosenIndex = (chosenIndex+i) % allNodes.length
+                        curChosen = allNodes[curChosenIndex]
+                        if (!loadedNodes[curChosen.id]) {
+                            nodeQueue.push(curChosen);
+                            break;
+                        }
+                    }
+                }
+
+                let currentNode = nodeQueue.shift();  // Get the next node from the queue
+
+                // Skip if the node is already loaded
+                if (loadedNodes[currentNode.id]) continue;
+
+                // Add the current node to the loaded list
+                addToLoadedNodes(currentNode);
+                nodesProcessed++;
+
+                // Get the neighbors of the current node from the adjacency list
+                let neighbors = allNbrsById[currentNode.id];
+
+                // Split neighbors into already loaded and not yet loaded
+                let alreadyLoadedNeighbors = neighbors.filter(nbhood => loadedNodes[nbhood.n.id]);
+                let notLoadedNeighbors = neighbors.filter(nbhood => !loadedNodes[nbhood.n.id]);
+                permute(notLoadedNeighbors);
+
+                // Add all already loaded neighbors
+                alreadyLoadedNeighbors.forEach(nbhood => addToLoadedLinks(nbhood.l));
+
+                // Calculate the remaining capacity
+                let remainingCapacity = inital_nodecount - nodesProcessed;
+
+                // Add not-yet-loaded neighbors, only up to the remaining capacity
+                let selectedNotLoadedNeighbors = notLoadedNeighbors.slice(0, Math.min(initial_degree, remainingCapacity));
+                selectedNotLoadedNeighbors.forEach(nbhood => {
+                    addToLoadedNodes(nbhood.n);
+                    addToLoadedLinks(nbhood.l);
+                    nodeQueue.push(nbhood.n);
+                });
+            }
+        }
+
+        loadInitialGraph();
 
         const mySvg = document.getElementById('mySvg');
         const panGroup = document.getElementById('panGroup');
@@ -156,7 +221,7 @@
                 "link",
                 d3.forceLink(Object.values(loadedLinks))
                   .id(d => d.id)
-                  .distance(20))
+                  .distance(50))
             .force("charge", d3.forceManyBody().strength(-20))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collide", d3.forceCollide(15))
@@ -233,12 +298,12 @@
                 if (foundLink) {
                     selectEdge(foundLink);
                 } else {
-                    alert("Node or edge not found");
+                    alert("Node or link not found");
                 }
             }
         }
         let selectedNode = null; // Keep track of the currently selected node
-        let selectedEdge = null; // Keep track of the currently selected edge
+        let selectedEdge = null; // Keep track of the currently selected link
         let selectedNeighbors = {}; // Keep track of the selected neighbors
 
         function colorNode(node, circleColor, textColor) {
@@ -247,9 +312,9 @@
             nbrElement.select("text").attr("stroke", textColor).attr("stroke-width", "1px").attr("font-size", "11px")
         }
 
-        function colorEdge(edge, strokeColor) {
-            // Highlight the selected edge in blue
-            edgeElement = d3.selectAll(".link").filter(d => d == edge)
+        function colorEdge(link, strokeColor) {
+            // Highlight the selected link in blue
+            edgeElement = d3.selectAll(".link").filter(d => d == link)
             edgeElement.style("stroke", strokeColor);
         }
 
@@ -280,7 +345,7 @@
                 colorEdge(selectedEdge, "lightgray");
                 colorNode(selectedEdge.source, "lightgreen", "DarkBlue")
                 colorNode(selectedEdge.target, "lightgreen", "DarkBlue")
-                selectedEdge = null; // Clear the selected edge
+                selectedEdge = null; // Clear the selected link
             }
         }
 
@@ -343,7 +408,7 @@
         function selectNode(nodeData) {
             toggleCase = (nodeData == selectedNode)
 
-            // De-select any previously selected node or edge
+            // De-select any previously selected node or link
             deSelectNode();
             deSelectEdge();
 
@@ -390,7 +455,7 @@
         function selectEdge(edgeData) {
             toggleCase = (edgeData == selectedEdge)
 
-            // De-select any previously selected node or edge
+            // De-select any previously selected node or link
             deSelectNode();
             deSelectEdge();
 
@@ -401,7 +466,7 @@
                 return;
             }
 
-            // Highlight the selected edge in blue and its nodes pink/red.
+            // Highlight the selected link in blue and its nodes pink/red.
             colorEdge(edgeData, "crimson");
             colorNode(edgeData.source, "pink", "red")
             colorNode(edgeData.target, "pink", "red")
@@ -441,6 +506,22 @@
                 .restart();
 
             showBoundingBox();
+        }
+
+        function permute(array) {
+          let currentIndex = array.length;
+
+          // While there remain elements to shuffle...
+          while (currentIndex != 0) {
+
+            // Pick a remaining element...
+            let randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+
+            // And swap it with the current element.
+            [array[currentIndex], array[randomIndex]] = [
+              array[randomIndex], array[currentIndex]];
+          }
         }
 
         selectNode(Object.values(loadedNodes)[0])
