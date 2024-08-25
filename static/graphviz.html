@@ -38,7 +38,7 @@
 </head>
 <body>
     <div style="text-align: center; margin-bottom: 10px;">
-        <input type="text" id="search" placeholder="Search for a node or edge...">
+        <input type="text" id="search" placeholder="Search for a node or link...">
         <button onclick="searchGraph()">Search</button>
     </div>
     <svg id="mySvg" width="960" height="600">
@@ -54,16 +54,18 @@
         const width = 960;
         const height = 600;
 
-        const full_node_count = 1000;
-        const full_edge_count = 3000;
+        // Size of full graph.
+        const full_node_count = 2000;
+        const full_link_count = 12000;
 
-        const inital_nodecount = 100;
-        const initial_degree = 5;
+        // Size of initial load.
+        const target_nodecount_to_load = 200;
+        const nbr_loading_batchsize = 5;
 
         var allNodes = [], allLinks = [], allNbrsById = {}
         function initFullGraph() {
             allNodes = Array.from({ length: full_node_count }, (_, i) => ({ id: `n${i}` }));
-            allLinks = Array.from({ length: full_edge_count }, () => {
+            allLinks = Array.from({ length: full_link_count }, () => {
                 src = Math.floor(Math.random() * (full_node_count-1))
                 tgt = Math.floor(Math.random() * (full_node_count-1))
                 if (src > tgt) {
@@ -95,38 +97,13 @@
 
         let loadedNodes = {};         // Store currently loaded nodes.  Type: NodeId -> Node
         let loadedLinksAdjlist = {};  // Store currently loaded links.  Type: Nbr1Id -> (Nbr2Id -> Link)
-        let loadedLinks = {}          //                                Type: EdgeId -> Link
-        function addToLoadedNodes(node){
-            if (!loadedNodes[node.id]) {
-                loadedNodes[node.id] = node;  // Copy nodes to loadedNodes
-
-                // Initialize an empty array in loadedLinksAdjlist for each node
-                if (!loadedLinksAdjlist[node.id]) {
-                    loadedLinksAdjlist[node.id] = {};
-                }
-            }
-        }
-
-        function addToLoadedLinks(link){
-            if (!loadedNodes[link.source.id]) {
-                addToLoadedNodes(link.source)
-            }
-            loadedLinksAdjlist[link.source.id][link.target.id] = link;
-
-            if (!loadedNodes[link.target.id]) {
-                addToLoadedNodes(link.target)
-            }
-            loadedLinksAdjlist[link.target.id][link.source.id] = link;
-
-            loadedLinks[link.id] = link
-        }
-
+        let loadedLinks = {}          //                                Type: LinkId -> Link
         function loadInitialGraph(seedNodes = []) {
             let nodeQueue = [...seedNodes];  // Initialize nodeQueue with seed nodes
             let nodesProcessed = 0;
 
-            while (nodeQueue.length > 0 || (nodesProcessed < inital_nodecount && Object.keys(loadedNodes).length < Object.keys(allNodes).length)) {
-                // If the queue is empty and we haven't processed 'inital_nodecount' nodes, add arbitrary nodes
+            while (nodeQueue.length > 0 || (nodesProcessed < target_nodecount_to_load && Object.keys(loadedNodes).length < Object.keys(allNodes).length)) {
+                // If the queue is empty and we haven't processed 'target_nodecount_to_load' nodes, add arbitrary nodes
                 if (nodeQueue.length === 0) {
                     chosenIndex = Math.floor(Math.random() * allNodes.length);
                     for (let i = 0;i < allNodes.length; i++) {
@@ -153,140 +130,210 @@
 
                 // Split neighbors into already loaded and not yet loaded
                 let alreadyLoadedNeighbors = neighbors.filter(nbhood => loadedNodes[nbhood.n.id]);
-                let notLoadedNeighbors = neighbors.filter(nbhood => !loadedNodes[nbhood.n.id]);
-                permute(notLoadedNeighbors);
+                let nbrsStillNotLoaded = neighbors.filter(nbhood => !loadedNodes[nbhood.n.id]);
+                permute(nbrsStillNotLoaded);
 
                 // Add all already loaded neighbors
                 alreadyLoadedNeighbors.forEach(nbhood => addToLoadedLinks(nbhood.l));
 
                 // Calculate the remaining capacity
-                let remainingCapacity = inital_nodecount - nodesProcessed;
+                let remainingGlobalCapacity = target_nodecount_to_load - nodesProcessed;
 
                 // Add not-yet-loaded neighbors, only up to the remaining capacity
-                let selectedNotLoadedNeighbors = notLoadedNeighbors.slice(0, Math.min(initial_degree, remainingCapacity));
+                willLoadTheseManyMore = Math.min(nbr_loading_batchsize, remainingGlobalCapacity, nbrsStillNotLoaded.length)
+                let selectedNotLoadedNeighbors = nbrsStillNotLoaded.slice(0, willLoadTheseManyMore);
                 selectedNotLoadedNeighbors.forEach(nbhood => {
                     addToLoadedNodes(nbhood.n);
                     addToLoadedLinks(nbhood.l);
                     nodeQueue.push(nbhood.n);
                 });
+
+                manageLoadMoreNode(currentNode, nbrsStillNotLoaded.length - willLoadTheseManyMore);
             }
         }
 
-        loadInitialGraph();
+        function manageLoadMoreNode(currentNode, numOfNbrsStillNotLoaded) {
+            const moreNodeId = "more_" + currentNode.id;
 
-        const mySvg = document.getElementById('mySvg');
-        const panGroup = document.getElementById('panGroup');
-        const text = document.getElementById('centerCoords');
+            if (numOfNbrsStillNotLoaded > 0) {
+                const moreNodeLabel = `${numOfNbrsStillNotLoaded} more`;
+                const moreNode = loadedNodes[moreNodeId] || { id: moreNodeId, name: moreNodeLabel, parentNodeId: currentNode.id };
+                moreNode.name = moreNodeLabel;
 
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 10])
-            .on("zoom", (event) => {
-                panGroup.setAttribute("transform", event.transform);
-                updateCenterCoordinates(event.transform);
+                // Add the "more" node to loadedNodes if it's not already there
+                if (!loadedNodes[moreNodeId]) {
+                    addToLoadedNodes(moreNode);
+                    const moreLink = {
+                        id: `link_${currentNode.id}_${moreNodeId}`,
+                        source: currentNode,
+                        target: moreNode,
+                        virtual: true  // Mark this as a virtual link
+                    };
+                    addToLoadedLinks(moreLink);
+                }
+            } else {
+                // Remove any existing "more" node if all neighbors are loaded
+                if (loadedNodes[moreNodeId]) {
+                    delete loadedNodes[moreNodeId];
+                    delete loadedLinksAdjlist[currentNode.id][moreNodeId];
+                    delete loadedLinks[`link_${currentNode.id}_${moreNodeId}`];
+
+/*
+                    // Ensure selectedNode and selectedLink are still valid
+                    if (selectedNode && selectedNode.id === moreNodeId) {
+                        deSelectNode();
+                    }
+                    if (selectedLink && (selectedLink.source.id === moreNodeId || selectedLink.target.id === moreNodeId)) {
+                        deSelectLink();
+                    }
+*/
+                }
+            }
+
+/*
+            // Update the graph rendering to reflect any changes
+            renderGraph();
+            simulation.nodes(Object.values(loadedNodes));
+            simulation.force("link").links(Object.values(loadedLinks));
+            simulation.alpha(1).restart();
+
+            // Ensure the current selected node or link is visually reselected
+            if (selectedNode) {
+                selectNode(selectedNode);
+            }
+            if (selectedLink) {
+                selectLink(selectedLink);
+            }
+*/
+        }
+
+        // This function is called when a "more" node is clicked
+        function loadMoreNeighborsClicked(d) {
+            parentNodeId = d.parentNodeId
+            let currentNode = loadedNodes[parentNodeId];
+
+            if (!currentNode) return;
+
+            let neighbors = allNbrsById[currentNode.id];
+            let nbrsStillNotLoaded = neighbors.filter(nbhood => !loadedNodes[nbhood.n.id]);
+
+            let willLoadTheseManyMore = Math.min(nbrsStillNotLoaded.length, nbr_loading_batchsize);
+
+            // Load the next batch of neighbors
+            let selectedNotLoadedNeighbors = nbrsStillNotLoaded.slice(0, willLoadTheseManyMore);
+            selectedNotLoadedNeighbors.forEach(nbhood => {
+                addToLoadedNodes(nbhood.n);
+                addToLoadedLinks(nbhood.l);
             });
 
-        const svg = d3.select(mySvg)
-            .attr("width", width)
-            .attr("height", height)
-            .style("position", "relative")  // Ensure SVG positioning
-            .call(zoom)
-            .append("g");
+            // Refactored: Manage "more" node creation/removal using helper function
+            manageLoadMoreNode(currentNode, nbrsStillNotLoaded.length - willLoadTheseManyMore);
 
-        // Append a rectangle as a bounding box
-        //svg.append("rect")
-        //    .attr("x", 0)
-        //    .attr("y", 0)
-        //    .attr("width", width)
-        //    .attr("height", height)
-        //    .attr("fill", "none")
-        //    .attr("stroke", "black")
-        //    .attr("stroke-width", 2);  // Adjust stroke width as needed
+            // Re-render the graph with the newly loaded neighbors
+            renderGraph();
 
-        svg.append("defs").append("marker")
-            .attr("id", "arrowhead")
-            .attr("viewBox", "-0 -5 10 10")
-            .attr("refX", 13)
-            .attr("refY", 0)
-            .attr("orient", "auto")
-            .attr("markerWidth", 3)
-            .attr("markerHeight", 3)
-            .attr("xoverflow", "visible")
-            .append("svg:path")
-            .attr("d", "M 0,-5 L 10 ,0 L 0,5")
-            .attr("fill", "#999")
-            .style("stroke", "none");
-
-        const simulation = d3.forceSimulation(Object.values(loadedNodes))
-            .force(
-                "link",
-                d3.forceLink(Object.values(loadedLinks))
-                  .id(d => d.id)
-                  .distance(50))
-            .force("charge", d3.forceManyBody().strength(-20))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide(15))
-            .on("tick", ticked);
-
-        const link = d3.select(panGroup).append("g")
-                          .attr("class", "links")
-                        .selectAll("line")
-                          .data(Object.values(loadedLinks))
-                          .enter()
-                          .append("line")
-                            .attr("stroke-width", 2)
-                            .attr("class", "link")
-                            .on("click", function(event, d) {
-                                selectEdge(d);
-                            });
-
-        const node = d3.select(panGroup).append("g")
-                          .attr("class", "nodes")
-                        .selectAll("g")
-                          .data(Object.values(loadedNodes))
-                          .enter().append("g")
-                            .attr("class", "node")
-                            .on("click", function(event, d) {
-                                selectNode(d);
-                            });
-
-        node.append("circle")
-            .attr("fill", "lightgreen")
-            .attr("r", 10);
-
-        node.append("text")
-              .attr("x", 0)
-              .attr("y", 0)
-              .attr("dy", ".35em")
-              .attr("text-anchor", "middle")
-              .style("font-size", "0.33em")
-              .text(d => d.id)
-              .attr("fill", "deepblue");  // Default text color
-
-        function ticked() {
-            link
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
-
-            node
-                .attr("transform", d => `translate(${d.x},${d.y})`);
-
-            updateCenterCoordinates();
+            // Adjust the simulation to include the newly added nodes and links
+            simulation.nodes(Object.values(loadedNodes));
+            simulation.force("link").links(Object.values(loadedLinks));
+            simulation.alpha(1).restart();
         }
 
-        const updateCenterCoordinates = (transform = null) => {
-            if (transform == null) {
-                return
-            }
-            const svgRect = mySvg.getBoundingClientRect();
+        // This function re-renders the graph and binds the necessary event handlers
+        var links = null, nodes = null, simulation = null
+        var mySvg=null, panGroup=null, centerCoordsElement=null, zoom=null;
+        function renderGraph() {
+            mySvg = document.getElementById('mySvg');
+            panGroup = document.getElementById('panGroup');
+            centerCoordsElement = document.getElementById('centerCoords');
 
-            const [centerX, centerY] = transform.invert([svgRect.width / 2, svgRect.height / 2]);
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on("zoom", (event) => {
+                    panGroup.setAttribute("transform", event.transform);
+                    updateCenterCoordinates(event.transform);
+                });
+            const svg = d3.select(mySvg)
+                .attr("width", width)
+                .attr("height", height)
+                .style("position", "relative")  // Ensure SVG positioning
+                .call(zoom)
+                .append("g");
 
-            text.textContent = `${Math.round(centerX)}, ${Math.round(centerY)}`;
-        };
-        window.addEventListener('resize', updateCenterCoordinates);
-        updateCenterCoordinates(); // Initial call to set coordinates
+            svg.append("defs").append("marker")
+                .attr("id", "arrowhead")
+                .attr("viewBox", "-0 -5 10 10")
+                .attr("refX", 13)
+                .attr("refY", 0)
+                .attr("orient", "auto")
+                .attr("markerWidth", 3)
+                .attr("markerHeight", 3)
+                .attr("xoverflow", "visible")
+                .append("svg:path")
+                .attr("d", "M 0,-5 L 10 ,0 L 0,5")
+                .attr("fill", "#999")
+                .style("stroke", "none");
+                const linksData = Object.values(loadedLinks);
+                const nodesData = Object.values(loadedNodes);
+
+            simulation = d3.forceSimulation(Object.values(loadedNodes))
+                .force(
+                    "link",
+                    d3.forceLink(Object.values(loadedLinks))
+                      .id(d => d.id)
+                      .distance(50))
+                .force("charge", d3.forceManyBody().strength(-20))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide(15))
+                .on("tick", ticked);
+ 
+            // Bind data and update links
+            links = d3.select(panGroup).selectAll(".link")
+                .data(linksData, d => d.id)
+                .join(
+                    enter => enter.append("line")
+                        .attr("stroke-width", 2)
+                        .attr("class", "link")
+                        .on("click", function(event, d) {
+                            selectLink(d);
+                        }),
+                    update => update,
+                    exit => exit.remove()
+                );
+
+            // Bind data and update nodes
+            nodes = d3.select(panGroup).selectAll(".node")
+                .data(nodesData, d => d.id)
+                .join(
+                    enter => enter.append("g")
+                        .attr("class", "node")
+                        .on("click", function(event, d) {
+                            if (d.id.startsWith("more_")) {  // Check if the node is a "more" node
+                                loadMoreNeighborsClicked(d);  // Load more neighbors
+                            } else {
+                                selectNode(d);  // Otherwise, select the node
+                            }
+                        }),
+                    update => update,
+                    exit => exit.remove()
+                );
+
+            // Append circles for nodes
+            nodes.append("circle")
+                .attr("fill", "lightgreen")
+                .attr("r", 10);
+
+            // Append text labels for nodes
+            nodes.append("text")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("dy", ".35em")
+                .attr("text-anchor", "middle")
+                .style("font-size", "0.33em")
+                .text(d => d.name ? d.name : d.id)
+                .attr("fill", "deepblue");  // Default text color
+
+            nodes.exit().remove();
+        }
 
         function searchGraph() {
             const searchTerm = document.getElementById('search').value;
@@ -296,36 +343,119 @@
             } else {
                 const foundLink = loadedLinks[searchTerm];
                 if (foundLink) {
-                    selectEdge(foundLink);
+                    selectLink(foundLink);
                 } else {
                     alert("Node or link not found");
                 }
             }
         }
+
+        // Recording current selections.
         let selectedNode = null; // Keep track of the currently selected node
-        let selectedEdge = null; // Keep track of the currently selected link
+        let selectedLink = null; // Keep track of the currently selected link
         let selectedNeighbors = {}; // Keep track of the selected neighbors
 
-        function colorNode(node, circleColor, textColor) {
-            nbrElement = d3.selectAll(".node").filter(d => d === node)
-            nbrElement.select("circle").attr("fill", circleColor);
-            nbrElement.select("text").attr("stroke", textColor).attr("stroke-width", "1px").attr("font-size", "11px")
+        function selectNode(nodeData) {
+            toggleCase = (nodeData == selectedNode)
+
+            // De-select any previously selected node or link
+            deSelectNode();
+            deSelectLink();
+
+            // Clear the selected neighbors set and reset their colors
+            deSelectNbrs();
+
+            if (toggleCase) {
+                return;
+            }
+
+            // Highlight the selected node in pink/red.
+            colorNode(nodeData, "pink", "red")
+            selectedNode = nodeData;
+
+            // Identify neighbors and add them to the selectedNeighbors set
+            Object.values(loadedLinksAdjlist[nodeData.id]).forEach(link => {
+                if (link.source === nodeData) {
+                    selectNbr(link, link.target);
+                } else if (link.target === nodeData) {
+                    selectNbr(link, link.source);
+                }
+            });
+
+            // Apply stronger repulsive force limited to a certain distance for neighbors
+            simulation
+                .force(
+                    "link",
+                    d3.forceLink(Object.values(loadedLinksAdjlist[nodeData.id]))
+                        .id(d => d.id)
+                        .distance(link => link.virtual ? 30 : 50))
+                .force(
+                    "charge",
+                    d3.forceManyBody()
+                         .strength(-600)
+                        //  .strength(d => d.id in selectedNeighbors ? -600 : -200)  // 3x repulsive force for neighbors
+                        //  .distanceMax(d => d.id in selectedNeighbors ? 100 : Infinity)) // Limit force to 100 units for neighbors
+                )
+                .alpha(1)
+                .restart();
+
+            zoomToBoundingBox();
         }
 
-        function colorEdge(link, strokeColor) {
-            // Highlight the selected link in blue
-            edgeElement = d3.selectAll(".link").filter(d => d == link)
-            edgeElement.style("stroke", strokeColor);
-        }
+        function selectLink(linkData) {
+            toggleCase = (linkData == selectedLink)
 
-        function deSelectNbrs() {
-                Object.values(selectedNeighbors).forEach(ls => {
-                    nbr = ls[0]
-                    nbrEdge = ls[1]
-                    colorNode(nbr, "lightgreen", "DarkBlue")
-                    colorEdge(nbrEdge, "lightgray")
-                });
-                selectedNeighbors = {};
+            // De-select any previously selected node or link
+            deSelectNode();
+            deSelectLink();
+
+            // Clear the selected neighbors set and reset their colors
+            deSelectNbrs()
+
+            if (toggleCase) {
+                return;
+            }
+
+            // Highlight the selected link in blue and its nodes pink/red.
+            colorLink(linkData, "crimson");
+            colorNode(linkData.source, "pink", "red")
+            colorNode(linkData.target, "pink", "red")
+            selectedLink = linkData;
+
+            // Identify all neighbors of the source and target nodes and add them to the selectedNeighbors set
+            nbrLinks = [linkData]
+            Object.entries(loadedLinksAdjlist[linkData.source.id]).forEach(([altTargetId, link]) => {
+                if (altTargetId != linkData.target.id) {
+                    selectNbr(link, loadedNodes[altTargetId]);
+                    nbrLinks.push(link);
+                }
+            })
+            Object.entries(loadedLinksAdjlist[linkData.target.id]).forEach(([altSourceId, link]) => {
+                if (altSourceId != linkData.source.id) {
+                    selectNbr(link, loadedNodes[altSourceId]);
+                    nbrLinks.push(link);
+                }
+            })
+
+            // Apply stronger repulsive force limited to a certain distance for neighbors
+            simulation
+                .force(
+                    "link",
+                    d3.forceLink(nbrLinks)
+                        .id(d => d.id)
+                        .distance(d => d.source.id in selectedNeighbors || d.target.id in selectedNeighbors ? 50 : 80)
+                        )
+                .force(
+                    "charge",
+                    d3.forceManyBody()
+                        .strength(-20)
+                        //  .strength(d => d.id in selectedNeighbors ? -200)  // 3x repulsive force for neighbors
+                        //  .distanceMax(d => d.id in selectedNeighbors 100 : Infinity) // Limit force to 100 units for neighbors
+                    )
+                .alpha(1)
+                .restart();
+
+            zoomToBoundingBox();
         }
 
         function deSelectNode() {
@@ -334,28 +464,51 @@
                 colorNode(selectedNode, "lightgreen", "DarkBlue")
                 selectedNode = null; // Clear the selected node
 
-                // Reset the color of edges connected to the previously selected node to light gray
+                // Reset the color of links connected to the previously selected node to light gray
                 d3.selectAll(".link")
                     .attr("stroke", "lightgray");
             }
         }
 
-        function deSelectEdge() {
-            if (selectedEdge) {
-                colorEdge(selectedEdge, "lightgray");
-                colorNode(selectedEdge.source, "lightgreen", "DarkBlue")
-                colorNode(selectedEdge.target, "lightgreen", "DarkBlue")
-                selectedEdge = null; // Clear the selected link
+        function deSelectLink() {
+            if (selectedLink) {
+                colorLink(selectedLink, "lightgray");
+                colorNode(selectedLink.source, "lightgreen", "DarkBlue")
+                colorNode(selectedLink.target, "lightgreen", "DarkBlue")
+                selectedLink = null; // Clear the selected link
             }
         }
 
-        function selectNbr(nbrEdge, selectedNeighbor) {
-            colorEdge(nbrEdge, "crimson");
+        function selectNbr(nbrLink, selectedNeighbor) {
+            colorLink(nbrLink, "crimson");
             colorNode(selectedNeighbor, "lightyellow", "black");
-            selectedNeighbors[selectedNeighbor.id] = [selectedNeighbor, nbrEdge];
+            selectedNeighbors[selectedNeighbor.id] = [selectedNeighbor, nbrLink];
         }
 
-        function showBoundingBox() {
+        function deSelectNbrs() {
+                Object.values(selectedNeighbors).forEach(ls => {
+                    nbr = ls[0]
+                    nbrLink = ls[1]
+                    colorNode(nbr, "lightgreen", "DarkBlue")
+                    colorLink(nbrLink, "lightgray")
+                });
+                selectedNeighbors = {};
+        }
+
+        function ticked() {
+            links
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            nodes
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+
+            updateCenterCoordinates();
+        }
+
+        function zoomToBoundingBox() {
             // Calculate the bounding box and zoom to show all neighbors
             setTimeout(() => {
                 let xs = new Set();
@@ -366,9 +519,9 @@
                     ys.add(selectedNode.y)
                 }
 
-                if (selectedEdge) {
-                    xs.add(selectedEdge.source.x).add(selectedEdge.target.x)
-                    ys.add(selectedEdge.source.y).add(selectedEdge.target.y)
+                if (selectedLink) {
+                    xs.add(selectedLink.source.x).add(selectedLink.target.x)
+                    ys.add(selectedLink.source.y).add(selectedLink.target.y)
                 }
 
                 Object.values(selectedNeighbors).forEach(ls => {
@@ -405,107 +558,58 @@
             }, 1000);
         }
 
-        function selectNode(nodeData) {
-            toggleCase = (nodeData == selectedNode)
+        function addToLoadedNodes(node){
+            if (!loadedNodes[node.id]) {
+                loadedNodes[node.id] = node;  // Copy nodes to loadedNodes
 
-            // De-select any previously selected node or link
-            deSelectNode();
-            deSelectEdge();
-
-            // Clear the selected neighbors set and reset their colors
-            deSelectNbrs();
-
-            if (toggleCase) {
-                return;
-            }
-
-            // Highlight the selected node in pink/red.
-            colorNode(nodeData, "pink", "red")
-            selectedNode = nodeData;
-
-            // Identify neighbors and add them to the selectedNeighbors set
-            Object.values(loadedLinksAdjlist[nodeData.id]).forEach(link => {
-                if (link.source === nodeData) {
-                    selectNbr(link, link.target);
-                } else if (link.target === nodeData) {
-                    selectNbr(link, link.source);
+                // Initialize an empty array in loadedLinksAdjlist for each node
+                if (!loadedLinksAdjlist[node.id]) {
+                    loadedLinksAdjlist[node.id] = {};
                 }
-            });
-
-            // Apply stronger repulsive force limited to a certain distance for neighbors
-            simulation
-                .force(
-                    "link",
-                    d3.forceLink(Object.values(loadedLinksAdjlist[nodeData.id]))
-                        .id(d => d.id)
-                        .distance(50))
-                .force(
-                    "charge",
-                    d3.forceManyBody()
-                         .strength(-600)
-                        //  .strength(d => d.id in selectedNeighbors ? -600 : -200)  // 3x repulsive force for neighbors
-                        //  .distanceMax(d => d.id in selectedNeighbors ? 100 : Infinity)) // Limit force to 100 units for neighbors
-                )
-                .alpha(1)
-                .restart();
-
-            showBoundingBox();
+            }
         }
 
-        function selectEdge(edgeData) {
-            toggleCase = (edgeData == selectedEdge)
-
-            // De-select any previously selected node or link
-            deSelectNode();
-            deSelectEdge();
-
-            // Clear the selected neighbors set and reset their colors
-            deSelectNbrs()
-
-            if (toggleCase) {
-                return;
+        function addToLoadedLinks(link){
+            if (!loadedNodes[link.source.id]) {
+                addToLoadedNodes(link.source);
             }
+            loadedLinksAdjlist[link.source.id][link.target.id] = link;
 
-            // Highlight the selected link in blue and its nodes pink/red.
-            colorEdge(edgeData, "crimson");
-            colorNode(edgeData.source, "pink", "red")
-            colorNode(edgeData.target, "pink", "red")
-            selectedEdge = edgeData;
+            if (!loadedNodes[link.target.id]) {
+                addToLoadedNodes(link.target);
+            }
+            loadedLinksAdjlist[link.target.id][link.source.id] = link;
 
-            // Identify all neighbors of the source and target nodes and add them to the selectedNeighbors set
-            nbrLinks = [edgeData]
-            Object.entries(loadedLinksAdjlist[edgeData.source.id]).forEach(([altTargetId, link]) => {
-                if (altTargetId != edgeData.target.id) {
-                    selectNbr(link, loadedNodes[altTargetId]);
-                    nbrLinks.push(link);
-                }
-            })
-            Object.entries(loadedLinksAdjlist[edgeData.target.id]).forEach(([altSourceId, link]) => {
-                if (altSourceId != edgeData.source.id) {
-                    selectNbr(link, loadedNodes[altSourceId]);
-                    nbrLinks.push(link);
-                }
-            })
+            loadedLinks[link.id] = link;
+        }
 
-            // Apply stronger repulsive force limited to a certain distance for neighbors
-            simulation
-                .force(
-                    "link",
-                    d3.forceLink(nbrLinks)
-                        .id(d => d.id)
-                        .distance(d => d.source.id in selectedNeighbors || d.target.id in selectedNeighbors ? 50 : 80)
-                        )
-                .force(
-                    "charge",
-                    d3.forceManyBody()
-                        .strength(-20)
-                        //  .strength(d => d.id in selectedNeighbors ? -200)  // 3x repulsive force for neighbors
-                        //  .distanceMax(d => d.id in selectedNeighbors 100 : Infinity) // Limit force to 100 units for neighbors
-                    )
-                .alpha(1)
-                .restart();
+        function updateMoreNodeLabel(node) {
+            const moreNodeId = "more_" + node.id;
+            const moreNode = loadedNodes[moreNodeId];
+            if (moreNode) moreNode.name = `${node.remainingNeighbors} more`;
+        }
 
-            showBoundingBox();
+        function updateCenterCoordinates(transform = null) {
+            if (transform == null) {
+                return
+            }
+            const svgRect = mySvg.getBoundingClientRect();
+
+            const [centerX, centerY] = transform.invert([svgRect.width / 2, svgRect.height / 2]);
+
+            centerCoordsElement.textContent = `${Math.round(centerX)}, ${Math.round(centerY)}`;
+        };
+
+        function colorNode(node, circleColor, textColor) {
+            nbrElement = d3.selectAll(".node").filter(d => d === node)
+            nbrElement.select("circle").attr("fill", circleColor);
+            nbrElement.select("text").attr("stroke", textColor).attr("stroke-width", "1px").attr("font-size", "11px")
+        }
+
+        function colorLink(link, strokeColor) {
+            // Highlight the selected link in blue
+            linkElement = d3.selectAll(".link").filter(d => d == link)
+            linkElement.style("stroke", strokeColor);
         }
 
         function permute(array) {
@@ -524,8 +628,12 @@
           }
         }
 
+        // Initializations
+        window.addEventListener('resize', updateCenterCoordinates);
+        loadInitialGraph();
+        renderGraph();
+        updateCenterCoordinates(); // Initial call to set coordinates
         selectNode(Object.values(loadedNodes)[0])
-
     </script>
 </body>
 </html>
