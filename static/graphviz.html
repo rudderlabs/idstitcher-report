@@ -6,7 +6,7 @@
     <title>DAG Visualization with D3.js</title>
     <style>
         body {
-            background-color: black;
+            background-color: yellow;
             margin: 0; /* Optional: removes default margin */
             padding: 0; /* Optional: removes default padding */
         }
@@ -46,24 +46,19 @@
         <g id="panGroup">
             <!-- All pan/zoomable content should go here -->
         </g>
-        <text id="centerCoords" x="50%" y="50%">480, 300</text> <!-- Center coordinates -->
+        <text id="centerCoords" x="50%" y="50%" stroke="black">480, 300</text> <!-- Center coordinates -->
     </svg>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-        const width = 960;
-        const height = 600;
+        var width = 960;
+        var height = 600;
 
-        // Size of full graph.
-        const full_node_count = 2000;
-        const full_link_count = 12000;
-
-        // Size of initial load.
-        const target_nodecount_to_load = 200;
+        // Number of node neighbors loaded in one batch.
         const nbr_loading_batchsize = 5;
 
         var allNodes = [], allLinks = [], allNbrsById = {}
-        function initFullGraph() {
+        function initRandomGraph(full_node_count, full_link_count) {
             allNodes = Array.from({ length: full_node_count }, (_, i) => ({ id: `n${i}` }));
             allLinks = Array.from({ length: full_link_count }, () => {
                 src = Math.floor(Math.random() * (full_node_count-1))
@@ -81,24 +76,32 @@
                 })
                 return retval
             });
-            allNbrsById = {}
-            allLinks.forEach(link => {
-                if (!allNbrsById[link.source.id]) {
-                    allNbrsById[link.source.id] = [];
-                }
-                if (!allNbrsById[link.target.id]) {
-                    allNbrsById[link.target.id] = [];
-                }
-                allNbrsById[link.source.id].push({l: link, n: link.target});
-                allNbrsById[link.target.id].push({l: link, n: link.source});
-            })
+
+            finishGraphInit();
         }
-        initFullGraph();
+
+        function initStarGraph(node_count) {
+            allNodes = Array.from({ length: node_count }, (_, i) => ({ id: `n${i}` }));
+            allLinks = Array.from({ length: node_count-1 }, (_, i) => {
+                src = 0;
+                tgt = i+1
+
+                id = `e_${src}_${tgt}`
+	        retval = ({
+                    id:     id,
+                    source: allNodes[src],
+                    target: allNodes[tgt]
+                })
+                return retval
+            });
+
+            finishGraphInit();
+        }
 
         let loadedNodes = {};         // Store currently loaded nodes.  Type: NodeId -> Node
         let loadedLinksAdjlist = {};  // Store currently loaded links.  Type: Nbr1Id -> (Nbr2Id -> Link)
         let loadedLinks = {}          //                                Type: LinkId -> Link
-        function loadInitialGraph(seedNodes = []) {
+        function loadInitialGraph(seedNodes, target_nodecount_to_load) {
             let nodeQueue = [...seedNodes];  // Initialize nodeQueue with seed nodes
             let nodesProcessed = 0;
 
@@ -285,7 +288,7 @@
                 .force("center", d3.forceCenter(width / 2, height / 2))
                 .force("collide", d3.forceCollide(15))
                 .on("tick", ticked);
- 
+
             // Bind data and update links
             links = d3.select(panGroup).selectAll(".link")
                 .data(linksData, d => d.id)
@@ -612,6 +615,20 @@
             linkElement.style("stroke", strokeColor);
         }
 
+        function finishGraphInit() {
+            allNbrsById = {}
+            allLinks.forEach(link => {
+                if (!allNbrsById[link.source.id]) {
+                    allNbrsById[link.source.id] = [];
+                }
+                if (!allNbrsById[link.target.id]) {
+                    allNbrsById[link.target.id] = [];
+                }
+                allNbrsById[link.source.id].push({l: link, n: link.target});
+                allNbrsById[link.target.id].push({l: link, n: link.source});
+            })
+        }
+
         function permute(array) {
           let currentIndex = array.length;
 
@@ -628,12 +645,35 @@
           }
         }
 
-        // Initializations
-        window.addEventListener('resize', updateCenterCoordinates);
-        loadInitialGraph();
-        renderGraph();
-        updateCenterCoordinates(); // Initial call to set coordinates
-        selectNode(Object.values(loadedNodes)[0])
+        // Start application
+        function start(mode) {
+            if (mode == "random") {
+                // Load random graph.
+                initRandomGraph(2000, 12000);
+
+                // Setup loading.
+                seedNodes = [];
+                target_nodecount_to_load = 200;
+            } else if (mode == "star") {
+                // Star graph to debug load more.
+                initStarGraph(15);
+
+                // Setup loading.
+                seedNodes = [allNodes[0]];
+                target_nodecount_to_load = 5;
+            }
+
+            loadInitialGraph(seedNodes, target_nodecount_to_load);
+            renderGraph();
+            selectNode(Object.values(loadedNodes)[0])
+
+            updateCenterCoordinates(); // Initial call to set coordinates
+            window.addEventListener('resize', updateCenterCoordinates);
+        }
+
+        start("random");
+        //start("star");
+
     </script>
 </body>
 </html>
