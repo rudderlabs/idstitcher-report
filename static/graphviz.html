@@ -277,17 +277,6 @@
             const linksData = Object.values(loadedLinks);
             const nodesData = Object.values(loadedNodes);
 
-            simulation = d3.forceSimulation(Object.values(loadedNodes))
-                .force(
-                    "link",
-                    d3.forceLink(Object.values(loadedLinks))
-                      .id(d => d.id)
-                      .distance(50))
-                .force("charge", d3.forceManyBody().strength(-20))
-                .force("center", d3.forceCenter(width / 2, height / 2))
-                .force("collide", d3.forceCollide(15))
-                .on("tick", ticked);
-
             // Bind data and update links
             links = d3.select(panGroup).selectAll(".link")
                 .data(linksData, d => d.id)
@@ -375,6 +364,33 @@
                 .attr("fill", "deepblue");  // Default text color
 
             nodes.exit().remove();
+        }
+
+        // Apply stronger repulsive force limited to a certain distance for neighbors
+        distanceFunc = (l => {
+            d = l.virtual ? 30 : (l.source.id in selectedNeighbors || l.target.id in selectedNeighbors ? 50 : 80);
+            console.log("Distance", l.id, d);
+            return d;
+        })
+        strengthFunc = (l => {
+            s = l in selectedNeighbors || l == selectedNode || selectedLink != null && (l == selectedLink.source || l == selectedLink.target) ? 200 : 20;
+            console.log("Strength", l.id, s);
+            return s;
+        });
+
+        function simulateFull() {
+            renderGraph();
+
+            nodesToSimulate = Object.values(loadedNodes)
+            linksToSimulate = Object.values(loadedLinks)
+            console.log("Selected links to simulate", linksToSimulate.map(n => n.id));
+
+            simulation = d3.forceSimulation(nodesToSimulate)
+                .force("link", d3.forceLink(linksToSimulate).id(d => d.id).distance(distanceFunc))
+                .force("charge", d3.forceManyBody().strength(strengthFunc))
+                .force("center", d3.forceCenter(width / 2, height / 2))
+                .force("collide", d3.forceCollide(15))
+                .on("tick", ticked);
         }
 
         function searchGraph() {
@@ -551,7 +567,7 @@
         }
 
         function zoomToBoundingBox() {
-            if (selectedNode || selecetdLink) {
+            if (selectedNode || selectedLink) {
                 // Calculate the bounding box and zoom to show all neighbors
                 setTimeout(() => {
                     let xs = new Set();
@@ -645,12 +661,16 @@
         };
 
         function colorNode(node, circleColor, textColor) {
+            // return;
+
             nbrElement = d3.selectAll(".node").filter(d => d === node)
             nbrElement.select("circle").attr("fill", circleColor);
             nbrElement.select("text").attr("stroke", textColor).attr("stroke-width", "1px").attr("font-size", "11px")
         }
 
         function colorLink(link, strokeColor) {
+            // return;
+
             // Highlight the selected link in blue
             linkElement = d3.selectAll(".link").filter(d => d == link)
             linkElement.style("stroke", strokeColor);
@@ -707,15 +727,16 @@
             }
 
             loadInitialGraph(seedNodes, target_nodecount_to_load);
-            renderGraph();
+            simulateFull();
+
             selectNode(Object.values(loadedNodes)[0])
 
             updateCenterCoordinates(); // Initial call to set coordinates
             window.addEventListener('resize', updateCenterCoordinates);
         }
 
-        // start("random");
-        start("star");
+        start("random");
+        // start("star");
 
     </script>
 </body>
