@@ -69,7 +69,7 @@
                 tgt = tgt + 1
 
                 id = `e_${src}_${tgt}`
-	        retval = ({
+                retval = ({
                     id:     id,
                     source: allNodes[src],
                     target: allNodes[tgt]
@@ -87,7 +87,7 @@
                 tgt = i+1
 
                 id = `e_${src}_${tgt}`
-	        retval = ({
+                retval = ({
                     id:     id,
                     source: allNodes[src],
                     target: allNodes[tgt]
@@ -105,18 +105,26 @@
             let nodeQueue = [...seedNodes];  // Initialize nodeQueue with seed nodes
             let nodesProcessed = 0;
 
-            while (nodeQueue.length > 0 || (nodesProcessed < target_nodecount_to_load && Object.keys(loadedNodes).length < Object.keys(allNodes).length)) {
+            nbrsExcluded = new Set();
+            while (nodeQueue.length > 0
+                   || (nodesProcessed < target_nodecount_to_load
+                       && Object.keys(loadedNodes).length < Object.keys(allNodes).length)) {
                 // If the queue is empty and we haven't processed 'target_nodecount_to_load' nodes, add arbitrary nodes
                 if (nodeQueue.length === 0) {
                     chosenIndex = Math.floor(Math.random() * allNodes.length);
                     for (let i = 0;i < allNodes.length; i++) {
                         curChosenIndex = (chosenIndex+i) % allNodes.length
                         curChosen = allNodes[curChosenIndex]
-                        if (!loadedNodes[curChosen.id]) {
+                        if (!loadedNodes[curChosen.id] && !nbrsExcluded.has(curChosen.id)) {
                             nodeQueue.push(curChosen);
                             break;
                         }
                     }
+                }
+
+                if (nodeQueue.length == 0) {
+                     // Couldn't find a node to add.
+                     break;
                 }
 
                 let currentNode = nodeQueue.shift();  // Get the next node from the queue
@@ -151,63 +159,47 @@
                     nodeQueue.push(nbhood.n);
                 });
 
+                // Excluding specific neighbors, for this time.
+                nbrsStillNotLoaded.slice(willLoadTheseManyMore).forEach(nbhood => nbrsExcluded.add(nbhood.n.id));
+
                 manageLoadMoreNode(currentNode, nbrsStillNotLoaded.length - willLoadTheseManyMore);
             }
         }
 
         function manageLoadMoreNode(currentNode, numOfNbrsStillNotLoaded) {
             const moreNodeId = "more_" + currentNode.id;
+            const moreLinkId = `link_${currentNode.id}_${moreNodeId}`
 
             if (numOfNbrsStillNotLoaded > 0) {
                 const moreNodeLabel = `${numOfNbrsStillNotLoaded} more`;
-                const moreNode = loadedNodes[moreNodeId] || { id: moreNodeId, name: moreNodeLabel, parentNodeId: currentNode.id };
-                moreNode.name = moreNodeLabel;
-
-                // Add the "more" node to loadedNodes if it's not already there
-                if (!loadedNodes[moreNodeId]) {
+                moreNode = loadedNodes[moreNodeId];
+                if (!moreNode) {
+                    moreNode = { id: moreNodeId, name: moreNodeLabel, parentNodeId: currentNode.id, name: moreNodeLabel };
                     addToLoadedNodes(moreNode);
+
                     const moreLink = {
-                        id: `link_${currentNode.id}_${moreNodeId}`,
+                        id: moreLinkId,
                         source: currentNode,
                         target: moreNode,
                         virtual: true  // Mark this as a virtual link
                     };
                     addToLoadedLinks(moreLink);
+
+                    if (selectedNode == currentNode
+                        || selectedLink != null && (selectedLink.source == currentNode || selectedLink.target == currentNode)) {
+                        selectNbr(moreLink, moreNode)
+                    }
+                } else {
+                    moreNode.name = moreNodeLabel;
                 }
             } else {
                 // Remove any existing "more" node if all neighbors are loaded
                 if (loadedNodes[moreNodeId]) {
                     delete loadedNodes[moreNodeId];
                     delete loadedLinksAdjlist[currentNode.id][moreNodeId];
-                    delete loadedLinks[`link_${currentNode.id}_${moreNodeId}`];
-
-/*
-                    // Ensure selectedNode and selectedLink are still valid
-                    if (selectedNode && selectedNode.id === moreNodeId) {
-                        deSelectNode();
-                    }
-                    if (selectedLink && (selectedLink.source.id === moreNodeId || selectedLink.target.id === moreNodeId)) {
-                        deSelectLink();
-                    }
-*/
+                    delete loadedLinks[moreLinkId];
                 }
             }
-
-/*
-            // Update the graph rendering to reflect any changes
-            renderGraph();
-            simulation.nodes(Object.values(loadedNodes));
-            simulation.force("link").links(Object.values(loadedLinks));
-            simulation.alpha(1).restart();
-
-            // Ensure the current selected node or link is visually reselected
-            if (selectedNode) {
-                selectNode(selectedNode);
-            }
-            if (selectedLink) {
-                selectLink(selectedLink);
-            }
-*/
         }
 
         // This function is called when a "more" node is clicked
@@ -222,11 +214,17 @@
 
             let willLoadTheseManyMore = Math.min(nbrsStillNotLoaded.length, nbr_loading_batchsize);
 
+            selectNewNbrs = (selectedNode != null && selectedNode.id == parentNodeId
+                || selectedLink != null && (selectedLink.source.id == parentNodeId || selectedLink.target.id == parentNodeId))
+
             // Load the next batch of neighbors
             let selectedNotLoadedNeighbors = nbrsStillNotLoaded.slice(0, willLoadTheseManyMore);
             selectedNotLoadedNeighbors.forEach(nbhood => {
                 addToLoadedNodes(nbhood.n);
                 addToLoadedLinks(nbhood.l);
+                if (selectNewNbrs) {
+                    selectNbr(nbhood.l, nbhood.n);
+                }
             });
 
             // Refactored: Manage "more" node creation/removal using helper function
