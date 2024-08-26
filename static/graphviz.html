@@ -273,8 +273,9 @@
                 .attr("d", "M 0,-5 L 10 ,0 L 0,5")
                 .attr("fill", "#999")
                 .style("stroke", "none");
-                const linksData = Object.values(loadedLinks);
-                const nodesData = Object.values(loadedNodes);
+
+            const linksData = Object.values(loadedLinks);
+            const nodesData = Object.values(loadedNodes);
 
             simulation = d3.forceSimulation(Object.values(loadedNodes))
                 .force(
@@ -294,8 +295,20 @@
                     enter => enter.append("line")
                         .attr("stroke-width", 2)
                         .attr("class", "link")
-                        .on("click", function(event, d) {
-                            selectLink(d);
+                        .style("stroke", function (l) {
+                            if (l == selectedLink) {
+                                return "blue";
+                            } else if (l.source == selectedNode || l.target == selectedNode) {
+                                return "crimson";
+                            } else if (selectedLink != null && (l.source == selectedLink.source || l.target == selectedLink.source
+                                                                || l.source == selectedLink.target || l.target == selectedLink.target)) {
+                                return "crimson";
+                            } else {
+                                return "lightgray";
+                            }
+                        })
+                        .on("click", function(event, l) {
+                            selectLink(l);
                         }),
                     update => update,
                     exit => exit.remove()
@@ -307,11 +320,11 @@
                 .join(
                     enter => enter.append("g")
                         .attr("class", "node")
-                        .on("click", function(event, d) {
-                            if (d.id.startsWith("more_")) {  // Check if the node is a "more" node
-                                loadMoreNeighborsClicked(d);  // Load more neighbors
+                        .on("click", function(event, n) {
+                            if (n.id.startsWith("more_")) {  // Check if the node is a "more" node
+                                loadMoreNeighborsClicked(n);  // Load more neighbors
                             } else {
-                                selectNode(d);  // Otherwise, select the node
+                                selectNode(n);  // Otherwise, select the node
                             }
                         }),
                     update => update,
@@ -320,7 +333,26 @@
 
             // Append circles for nodes
             nodes.append("circle")
-                .attr("fill", "lightgreen")
+                .attr("fill", function (n) {
+                    if (n.id.startsWith("more")) {
+                        retval = "white";
+                    } else if (n == selectedNode) {
+                        retval = "lightblue";
+                    } else if (selectedLink != null && (n == selectedLink.source || n == selectedLink.target)
+                        || n.id in selectedNeighbors) {
+                        retval = "pink";
+                    } else {
+                        retval = "lightgreen";
+                    }
+                    return retval;
+                })
+                .attr("stroke", function (n) {
+                    if (n.id.startsWith("more")) {
+                        return "white";
+                    } else {
+                        return "black";
+                    }
+                })
                 .attr("r", 10);
 
             // Append text labels for nodes
@@ -328,6 +360,15 @@
                 .attr("x", 0)
                 .attr("y", 0)
                 .attr("dy", ".35em")
+                .attr("stroke", function (n) {
+                    if (n == selectedNode
+                        || selectedLink != null && (n == selectedLink.source || n == selectedLink.target)
+                        || n.id in selectedNeighbors) {
+                        return "red";
+                    } else {
+                        return "darkblue";
+                    }
+                })
                 .attr("text-anchor", "middle")
                 .style("font-size", "0.33em")
                 .text(d => d.name ? d.name : d.id)
@@ -357,7 +398,7 @@
         let selectedNeighbors = {}; // Keep track of the selected neighbors
 
         function selectNode(nodeData) {
-            toggleCase = (nodeData == selectedNode)
+            toggleToDeSelectCase = (nodeData == selectedNode)
 
             // De-select any previously selected node or link
             deSelectNode();
@@ -366,12 +407,12 @@
             // Clear the selected neighbors set and reset their colors
             deSelectNbrs();
 
-            if (toggleCase) {
+            if (toggleToDeSelectCase) {
                 return;
             }
 
             // Highlight the selected node in pink/red.
-            colorNode(nodeData, "pink", "red")
+            colorNode(nodeData, "lightblue", "red")
             selectedNode = nodeData;
 
             // Identify neighbors and add them to the selectedNeighbors set
@@ -404,7 +445,7 @@
         }
 
         function selectLink(linkData) {
-            toggleCase = (linkData == selectedLink)
+            toggleToDeSelectCase = (linkData == selectedLink)
 
             // De-select any previously selected node or link
             deSelectNode();
@@ -413,12 +454,12 @@
             // Clear the selected neighbors set and reset their colors
             deSelectNbrs()
 
-            if (toggleCase) {
+            if (toggleToDeSelectCase) {
                 return;
             }
 
             // Highlight the selected link in blue and its nodes pink/red.
-            colorLink(linkData, "crimson");
+            colorLink(linkData, "blue");
             colorNode(linkData.source, "pink", "red")
             colorNode(linkData.target, "pink", "red")
             selectedLink = linkData;
@@ -510,53 +551,55 @@
         }
 
         function zoomToBoundingBox() {
-            // Calculate the bounding box and zoom to show all neighbors
-            setTimeout(() => {
-                let xs = new Set();
-                let ys = new Set();
+            if (selectedNode || selecetdLink) {
+                // Calculate the bounding box and zoom to show all neighbors
+                setTimeout(() => {
+                    let xs = new Set();
+                    let ys = new Set();
 
-                if (selectedNode) {
-                    xs.add(selectedNode.x)
-                    ys.add(selectedNode.y)
-                }
+                    if (selectedNode) {
+                        xs.add(selectedNode.x)
+                        ys.add(selectedNode.y)
+                    }
 
-                if (selectedLink) {
-                    xs.add(selectedLink.source.x).add(selectedLink.target.x)
-                    ys.add(selectedLink.source.y).add(selectedLink.target.y)
-                }
+                    if (selectedLink) {
+                        xs.add(selectedLink.source.x).add(selectedLink.target.x)
+                        ys.add(selectedLink.source.y).add(selectedLink.target.y)
+                    }
 
-                Object.values(selectedNeighbors).forEach(ls => {
-                    nbr = ls[0]
-                    xs.add(nbr.x)
-                    ys.add(nbr.y)
-                });
+                    Object.values(selectedNeighbors).forEach(ls => {
+                        nbr = ls[0]
+                        xs.add(nbr.x)
+                        ys.add(nbr.y)
+                    });
 
-                if (xs.size >= 1) {
-                    x0 = d3.min(xs), y0 = d3.min(ys), x1=d3.max(xs), y1 = d3.max(ys)
+                    if (xs.size >= 1) {
+                        x0 = d3.min(xs), y0 = d3.min(ys), x1=d3.max(xs), y1 = d3.max(ys)
 
-                    const boxWidth = Math.max(0.1, x1 - x0);
-                    const boxHeight = Math.max(0.1, y1 - y0);
+                        const boxWidth = Math.max(0.1, x1 - x0);
+                        const boxHeight = Math.max(0.1, y1 - y0);
 
-                    const scale = 0.8*Math.min(width / boxWidth, height / boxHeight);
+                        const scale = 0.8*Math.min(width / boxWidth, height / boxHeight);
 
-                    const translateX = (width - scale * (x0 + x1)) / 2;
-                    const translateY = (height - scale * (y0 + y1)) / 2;
+                        const translateX = (width - scale * (x0 + x1)) / 2;
+                        const translateY = (height - scale * (y0 + y1)) / 2;
 
 
-                    const transform = d3.zoomIdentity
-                        .translate(translateX, translateY)
-                        .scale(scale);
+                        const transform = d3.zoomIdentity
+                            .translate(translateX, translateY)
+                            .scale(scale);
 
-                    d3.select(mySvg).transition()
-                        .duration(1500)
-                        .call(
-                            zoom.transform,
-                            transform
-                        ).on("end", () => {
-                            updateCenterCoordinates(transform);
-                        });
-                }
-            }, 1000);
+                        d3.select(mySvg).transition()
+                            .duration(1500)
+                            .call(
+                                zoom.transform,
+                                transform
+                            ).on("end", () => {
+                                updateCenterCoordinates(transform);
+                            });
+                    }
+                }, 1000);
+            }
         }
 
         function addToLoadedNodes(node){
@@ -653,6 +696,8 @@
                 seedNodes = [];
                 target_nodecount_to_load = 200;
             } else if (mode == "star") {
+                width = 480;
+
                 // Star graph to debug load more.
                 initStarGraph(15);
 
@@ -669,8 +714,8 @@
             window.addEventListener('resize', updateCenterCoordinates);
         }
 
-        start("random");
-        //start("star");
+        // start("random");
+        start("star");
 
     </script>
 </body>
