@@ -561,9 +561,8 @@
 
         function finishGraphInit() {
             allNbrsById = {};
+            allNodes.forEach(node => allNbrsById[node.id] = [])
             allLinks.forEach(link => {
-                if (!allNbrsById[link.source.id]) allNbrsById[link.source.id] = [];
-                if (!allNbrsById[link.target.id]) allNbrsById[link.target.id] = [];
                 allNbrsById[link.source.id].push({ l: link, n: link.target });
                 allNbrsById[link.target.id].push({ l: link, n: link.source });
             });
@@ -597,7 +596,7 @@
 
         function start(mode) {
             if (mode === "random") {
-                initRandomGraph(2000, 12000);
+                initRandomGraph(1000, 3000);
                 loadInitialGraph([], 200);
             } else if (mode === "star") {
                 initStarGraph(35);
