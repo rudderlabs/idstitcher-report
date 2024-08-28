@@ -12,30 +12,64 @@
             margin: 0;
             padding: 0;
             display: flex;
+            flex-direction: column;
         }
 
-        .content {
-            max-width: 800px;
-            padding: 1em;
-            margin-left: 240px; /* Increased margin for better separation from TOC */
-            margin-right: 20px;
+        .header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 0em 0em;
         }
 
-        .toc {
-            position: fixed;
-            width: 220px; /* Increased width for better readability */
-            height: 100%;
-            overflow-y: auto;
+        .tab-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .tabs {
+            display: flex;
             background-color: #f4f4f4;
-            padding: 1em;
-            box-shadow: 2px 0px 5px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            flex: 1;
+            text-align: center;
+            color: #1F70C1;
+        }
+
+         .tab-button.active {
+             background-color: #ddd;
+             font-weight: bold;
+             border-bottom: 2px solid #1F70C1; /* IBM Blue */
+             color: #1F70C1;
+         }
+
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         h1, h2, h3 {
             color: #1F70C1; /* IBM Blue */
         }
 
-        .table-container {
+        .section {
             margin-bottom: 3em;
         }
 
@@ -104,68 +138,176 @@
             cursor: pointer;
         }
 
-        ul ul {
-            margin-left: 15px; /* Reduce the margin for nested lists */
-        }
     </style>
 </head>
 <body>
     {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count", "models/clusters"] %}
+    <div class="tab-container">
+        <div class="header">
+            <img alt="" src="./{{ this.DeRef('static/logo.jpg') }}" style="height: 80px; width: auto;" />
+            <h1>ID Stitcher Report</h1>
+        </div>
 
-    <div class="toc">
-        <h2>Contents</h2>
-        <ul id="toc">
-            <li><a href="#introduction">Introduction</a></li>
-            <li><a href="#id-graph">ID Graph</a></li>
-            <li><a href="#biggest-cluster">Biggest Cluster</a></li>
-            <li><a href="#tables">Tables</a>
-                <ul>
-                </ul>
-            </li>
-        </ul>
+        <div class="tabs">
+            <button class="tab-button active" data-tab="introduction-tab">Introduction</button>
+            <button class="tab-button" data-tab="clusters-tab">Clusters</button>
+            <button class="tab-button" data-tab="id-graph-tab">ID Graph</button>
+            <button class="tab-button" data-tab="tables-tab">Tables</button>
+        </div>
+
+        <div id="introduction-tab" class="tab-content active">
+            <h1>ID Stitcher Report</h1>
+            <div id="introduction" class="intro">
+                <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
+            </div>
+            <div id="overall-stats"></div>
+        </div>
+
+        <div id="clusters-tab" class="tab-content">
+            <div class="section" id="biggest-cluster-section">
+                <h2>Biggest Cluster</h2>
+                <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
+                <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
+            </div>
+            <div class="section" id="clusters-size-section">
+                <h2>Clusters Sorted by Size</h2>
+                <div id="clusters-sorted-by-size"></div>
+            </div>
+            <div class="section" id="clusters-dist-section">
+                <h2>Clusters Sorted by Distance</h2>
+                <div id="clusters-sorted-by-distance"></div>
+            </div>
+        </div>
+
+        <div id="id-graph-tab" class="tab-content">
+            <h2>ID Graph</h2>
+            <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
+            <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
+        </div>
+
+        <div id="tables-tab" class="tab-content">
+            <h2>Tables</h2>
+            <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
+            <ul id="tables-toc">
+                <li><a href="#top-max-degree-nodes">Top Max Degree Nodes</a></li>
+                <li><a href="#edges-graph">Edges Graph</a></li>
+                <li><a href="#edges-biggest-cluster">Edges in Biggest Cluster</a></li>
+                <li><a href="#id-type-count">ID Type Count</a></li>
+                <li><a href="#id-count">ID Count</a></li>
+            </ul>
+            <div id="top-max-degree-nodes"></div>
+            <div id="edges-graph"></div>
+            <div id="edges-biggest-cluster"></div>
+            <div id="id-type-count"></div>
+            <div id="id-count"></div>
+        </div>
     </div>
 
-    <div class="content">
-        <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
-        <h1>ID Stitcher Report</h1>
+    <!-- Popup structure -->
+    <div class="popup" id="popup">
+        <span class="close" id="closePopup">&times;</span>
+        <img id="popupImg" src="" alt="Popup Image">
+    </div>
 
-        <div id="introduction" class="intro">
-            <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
-        </div>
+    {% for qmodel in query_models %}
+        <script src={{ this.DeRef(qmodel) }}></script>
+    {% endfor %}
 
-        <h2 id="id-graph">ID Graph</h2>
-        <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
-        <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabContentElements = document.querySelectorAll('.tab-content');
+                const tabButtonElements = document.querySelectorAll('.tab-button');
 
-        <h2 id="biggest-cluster">Biggest Cluster</h2>
-        <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
-        <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
+                tabContentElements.forEach(content => content.classList.remove('active'));
+                tabButtonElements.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.color = ''; // Reset color for inactive tabs
+                });
 
-        <h2 id="tables">Tables</h2>
-        <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
+                const activeTabContent = document.getElementById(button.getAttribute('data-tab'));
+                activeTabContent.classList.add('active');
+                
+                button.classList.add('active');
+                button.style.color = '#1F70C1'; // Set color for the active tab
+            });
+        });
 
-        {% for qmodel in query_models %}
-            <script src={{ this.DeRef(qmodel) }}></script>
-        {% endfor %}
+        // Image popup functionality
+        document.querySelectorAll('img.clickable').forEach(img => {
+            img.onclick = () => {
+                const popup = document.getElementById('popup');
+                const popupImg = document.getElementById('popupImg');
+                popupImg.src = img.src;
+                popup.style.display = 'flex';
+            };
+        });
 
-        <!-- Popup structure -->
-        <div class="popup" id="popup">
-            <span class="close" id="closePopup">&times;</span>
-            <img id="popupImg" src="" alt="Popup Image">
-        </div>
+        document.getElementById('closePopup').onclick = () => {
+            document.getElementById('popup').style.display = 'none';
+        };
 
-        <script>
-            function renderTable(data, tableName) {
-                const containerDiv = document.createElement("div");
-                containerDiv.classList.add("table-container");
-                containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+        window.onclick = function(event) {
+            const popup = document.getElementById('popup');
+            if (event.target === popup) {
+                popup.style.display = 'none';
+            }
+        };
 
-                const heading = document.createElement("h3");
-                heading.textContent = `${tableName} (${data.Results.length} rows)`;
-                containerDiv.appendChild(heading);
+        function renderTable(data, tableName) {
+            const containerId = tableName.toLowerCase().replace(/ /g, '-');
+            let containerDiv = document.getElementById(containerId);
+            const isOverallStats = tableName.toLowerCase() === 'overall stats';
 
-                const table = document.createElement("table");
+            // Check if the container already exists
+            if (!containerDiv) {
+                containerDiv = document.createElement("div");
+                containerDiv.id = containerId;
 
+                document.querySelector('#tables-tab').appendChild(containerDiv);
+            }
+
+            const heading = document.createElement("h3");
+            heading.textContent = `${tableName} (${data.Results.length} rows)`;
+            containerDiv.appendChild(heading);
+
+            containerDiv.classList.add("table-container");
+            containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+
+            if (isOverallStats) {
+                containerDiv.style.maxWidth = "400px"; // Make it cozier for Overall Stats
+            }
+
+            const table = document.createElement("table");
+
+            if (isOverallStats) {
+                heading.textContent = `${tableName}`;
+
+                const headerRow = document.createElement("tr");
+                const nameHeader = document.createElement("th");
+                nameHeader.textContent = "Name";
+                const valueHeader = document.createElement("th");
+                valueHeader.textContent = "Value";
+                headerRow.appendChild(nameHeader);
+                headerRow.appendChild(valueHeader);
+                table.appendChild(headerRow);
+
+                data.Columns.forEach((column, colIndex) => {
+                    const row = document.createElement("tr");
+                    const th = document.createElement("th");
+                    th.textContent = column;
+                    row.appendChild(th);
+                    data.Results.forEach(result => {
+                        const td = document.createElement("td");
+                        td.textContent = result[colIndex];
+                        row.appendChild(td);
+                    });
+                    table.appendChild(row);
+                });
+
+                containerDiv.appendChild(table);
+            } else {
                 const headerRow = document.createElement("tr");
                 data.Columns.forEach((column) => {
                     const th = document.createElement("th");
@@ -174,9 +316,9 @@
                 });
                 table.appendChild(headerRow);
 
-                const rowsToShow = 100;
+                const rowsToShow = 20;
                 let rowsDisplayed = 0;
-
+  
                 const addRows = (start, end) => {
                     for (let i = start; i < end && i < data.Results.length; i++) {
                         const row = document.createElement("tr");
@@ -209,46 +351,14 @@
                     };
                     containerDiv.appendChild(showMoreButton);
                 }
-
-                document.querySelector('.content').appendChild(containerDiv);
-
-                // Add to Table of Contents
-                const tocList = document.getElementById('toc');
-                const tocItem = document.createElement('li');
-                const tocLink = document.createElement('a');
-                tocLink.href = `#${containerDiv.id}`;
-                tocLink.textContent = tableName;
-                tocItem.appendChild(tocLink);
-                tocList.querySelector('ul').appendChild(tocItem);
             }
+        }
 
-            // Image popup functionality
-            document.querySelectorAll('img.clickable').forEach(img => {
-                img.onclick = () => {
-                    const popup = document.getElementById('popup');
-                    const popupImg = document.getElementById('popupImg');
-                    popupImg.src = img.src;
-                    popup.style.display = 'flex';
-                };
-            });
-
-            document.getElementById('closePopup').onclick = () => {
-                document.getElementById('popup').style.display = 'none';
-            };
-
-            window.onclick = function(event) {
-                const popup = document.getElementById('popup');
-                if (event.target === popup) {
-                    popup.style.display = 'none';
-                }
-            };
-
-            window.onload = function () {
-                {% for qmodel in query_models %}
-                    renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
-                {% endfor %}
-            };
-        </script>
-    </div>
+        window.onload = function () {
+            {% for qmodel in query_models %}
+                renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
+            {% endfor %}
+        };
+    </script>
 </body>
 </html>
