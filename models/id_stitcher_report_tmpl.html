@@ -256,9 +256,9 @@
         };
 
         function renderTable(data, tableName) {
-            const containerId = tableName.toLowerCase().replace(/ /g, '-');
+            const containerId = tableName.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
             let containerDiv = document.getElementById(containerId);
-            const isOverallStats = tableName.toLowerCase() === 'overall stats';
+            const isOverallStats = containerId === 'overall-stats';
 
             // Check if the container already exists
             if (!containerDiv) {
