@@ -183,7 +183,10 @@
             </div>
             In tables below, column descriptions are as follows:
             <ol>
-                <li>{{input_material.Model.GetEntity().IdColumnName}}: The MAIN_ID value that as considered as representative of the cluster.</li>
+                {% with input_material = this.DeRef("inputs/id_stitcher") %}
+                    {{input_material.Model.GetEntity().IdColumnName}}
+                {% endwith %}
+                <li>: The MAIN_ID value that as considered as representative of the cluster.</li>
                 <li>ID_COUNT: Number of all IDs present in the cluster.</li>
                 <li>MAX_DIST: Maximumm distance of any node in the cluster from main ID. Following can be noted:
                     <ol>
