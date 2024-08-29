@@ -164,18 +164,41 @@
         </div>
 
         <div id="clusters-tab" class="tab-content">
+            <h2>Clusters</h2>
             <div class="section" id="biggest-cluster-section">
-                <h2>Biggest Cluster</h2>
                 <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
-                <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
+
+                <div style="text-align: center; margin-bottom: 10px;">
+                    <input type="text" id="search" placeholder="Search for a node or link...">
+                    <button onclick="searchGraph()">Search</button>
+                </div>
+                <svg id="mySvg" width="960" height="600">
+                    <rect width="960" height="600" fill="none" stroke="white"></rect>
+                    <g id="panGroup"></g>
+                    <text id="centerCoords" x="50%" y="50%" stroke="black">480, 300</text>
+                </svg>
+
+                <script src="https://d3js.org/d3.v7.min.js"></script>
+                <script src="{{this.DeRef('static/graphviz.js')}}"></script>
             </div>
+            In tables below, column descriptions are as follows:
+            <ol>
+                <li>{{input_material.Model.GetEntity().IdColumnName}}: The MAIN_ID value that as considered as representative of the cluster.</li>
+                <li>ID_COUNT: Number of all IDs present in the cluster.</li>
+                <li>MAX_DIST: Maximumm distance of any node in the cluster from main ID. Following can be noted:
+                    <ol>
+                       <il>Double of the MAX_DIST is an upper bound on the diameter of the cluster.</li>
+                       <il>A cluster has many IDs. These IDs are associated with different discovery timestamps, due to IDENTIFY events recorded in various "edge_sources". Due to the way ID stitching algorithm operates, main ID of the cluster is related with the oldest ID(i.e. one with oldest timestamp) in the cluster.</li>
+                    </ol>
+                </li>
+            </ol>
             <div class="section" id="clusters-size-section">
-                <h2>Clusters Sorted by Size</h2>
+                <h2>Clusters sorted by size of the cluster</h2>
                 <div id="clusters-sorted-by-size"></div>
             </div>
             <div class="section" id="clusters-dist-section">
-                <h2>Clusters Sorted by Distance</h2>
-                <div id="clusters-sorted-by-distance"></div>
+                <h2>Clusters sorted by distance from MAIN_ID node</h2>
+                <div id="clusters-sorted-by-dist"></div>
             </div>
         </div>
 
@@ -187,7 +210,7 @@
 
         <div id="tables-tab" class="tab-content">
             <h2>Tables</h2>
-            <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
+            <p>This section provides data from miscellaneous tables/models in the warehouse, showcasing clusters, statistics, and ID counts.</p>
             <ul id="tables-toc">
                 <li><a href="#top_max_degree_nodes">Top Max Degree Nodes</a></li>
                 <li><a href="#edges_graph">Edges Graph</a></li>
