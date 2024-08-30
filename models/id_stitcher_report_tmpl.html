@@ -173,9 +173,6 @@
                     <button onclick="searchGraph()">Search</button>
                 </div>
                 <svg id="mySvg" width="960" height="600">
-                    <rect width="960" height="600" fill="none" stroke="white"></rect>
-                    <g id="panGroup"></g>
-                    <text id="centerCoords" x="50%" y="50%" stroke="black">480, 300</text>
                 </svg>
 
                 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -185,8 +182,8 @@
             <ol>
                 {% with input_material = this.DeRef("inputs/id_stitcher").Model %}
                 {# <li>{{input_material.GetEntity().Model.IdColumnName}}: The MAIN_ID value that as considered as representative of the cluster.</li> #}
-                <li>MainId: The MAIN_ID value that as considered as representative of the cluster.</li>
                 {% endwith %}
+                <li>MainId: The MAIN_ID value that as considered as representative of the cluster.</li>
                 <li>ID_COUNT: Number of all IDs present in the cluster.</li>
                 <li>MAX_DIST: Maximumm distance of any node in the cluster from main ID. Following can be noted:
                     <ol>
