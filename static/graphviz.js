@@ -29,15 +29,15 @@ class GraphView {
             .attr("x", "50%")
             .attr("y", "50%")
             .attr("stroke", "black")
-            .style("opacity", 0.4)
+            .style("opacity", 0.1)
             .text("480, 300");
 
         this.titleText = this.mySvg.append("text")
-                .attr("id", "title")
-                .attr("x", 20)
-                .attr("y", 30)
-                .attr("font-size", "20px")
-                .attr("font-weight", "bold")
+            .attr("id", "title")
+            .attr("x", 20)
+            .attr("y", 30)
+            .attr("font-size", "20px")
+            .attr("font-weight", "bold")
 
         this.simulation = null;
         this.links = null;
@@ -297,7 +297,7 @@ class GraphView {
                 .attr("class", "link")
                 .style("stroke", this.getLinkColor.bind(this))
                 .on("click", (event, l) => {
-                    this.showPopup(l.id);  // Show popup if the node is already selected
+                    this.showPopup(l.id); // Show popup if the node is already selected
                     this.selectLink(l);
                     this.simulateLinks(this.nbrClosure(l));
                 }),
@@ -311,7 +311,7 @@ class GraphView {
                 enter => enter.append("g")
                 .attr("class", "node")
                 .on("click", (event, n) => {
-                    this.showPopup(n.name || n.id);  // Show popup if the node is already selected
+                    this.showPopup(n.name || n.id); // Show popup if the node is already selected
                     if (n.id.startsWith("more_")) {
                         this.loadMoreNeighborsClicked(n);
                     } else {
@@ -413,6 +413,10 @@ class GraphView {
         }
 
         this.selectedNode = nodeData;
+
+        if (!this.loadedLinksAdjlist[nodeData.id]) {
+            this.loadInitialGraph([nodeData], 1);
+        }
 
         this.selectedNeighbors = {};
         Object.values(this.loadedLinksAdjlist[nodeData.id]).forEach(link => {
@@ -636,7 +640,7 @@ class GraphView {
 
     // Abbreviation method for IDs
     abbreviateIDs(nodes) {
-        const typeAbbrMap = {};  // Cache for ID type abbreviations
+        const typeAbbrMap = {}; // Cache for ID type abbreviations
 
         function abbreviateType(type) {
             const lowerCaseType = type.toLowerCase();
@@ -645,7 +649,7 @@ class GraphView {
             }
 
             // Generate abbreviation using a heuristic
-            const parts = lowerCaseType.split(/[\W_]+/);  // Split by non-alphanumeric characters
+            const parts = lowerCaseType.split(/[\W_]+/); // Split by non-alphanumeric characters
             let abbr = parts.map(part => part.charAt(0)).join('').substring(0, 2).toUpperCase();
             typeAbbrMap[lowerCaseType] = abbr;
 
