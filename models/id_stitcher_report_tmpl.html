@@ -141,7 +141,7 @@
     </style>
 </head>
 <body>
-    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_in_biggest_clusters", "models/id_type_count", "models/id_count", "models/clusters"] %}
+    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_in_chosen_clusters", "models/id_type_count", "models/id_count", "models/clusters"] %}
     <div class="tab-container">
         <div class="header">
             <img alt="" src="./{{ this.DeRef('static/logo.jpg') }}" style="height: 80px; width: auto;" />
@@ -163,7 +163,7 @@
         </div>
 
         <div id="clusters-tab" class="tab-content active">
-            <div class="section" id="biggest-cluster-section">
+            <div class="section" id="chosen-clusters-section">
                 <svg id="mySvg" width="960" height="600">
                 <div style="text-align: center; margin-bottom: 10px;">
                     <input type="text" id="search" placeholder="Search for a node or link...">
@@ -208,13 +208,13 @@
             <ul id="tables-toc">
                 <li><a href="#top_max_degree_nodes">Top Max Degree Nodes</a></li>
                 <li><a href="#edges_graph">Edges Graph</a></li>
-                <li><a href="#edges_in_biggest_clusters">Edges in Biggest Clusters</a></li>
+                <li><a href="#edges_in_chosen_clusters">Edges in Chosen Clusters</a></li>
                 <li><a href="#id_type_count">ID Type Count</a></li>
                 <li><a href="#id_count">ID Count</a></li>
             </ul>
             <div id="top-max-degree-nodes"></div>
             <div id="edges-graph"></div>
-            <div id="edges-in-biggest-clusters"></div>
+            <div id="edges-in-chosen-clusters"></div>
             <div id="id-type-count"></div>
             <div id="id-count"></div>
         </div>

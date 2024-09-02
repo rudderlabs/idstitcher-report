@@ -188,7 +188,7 @@ models:
         is_event_stream: false
         with_entity_ids: []
         with_columns: []
-  - name: edges_in_biggest_clusters
+  - name: edges_in_chosen_clusters
     model_type: sql_template
     model_spec:
       validity_time: 24h # 1 day
@@ -198,6 +198,7 @@ models:
       single_sql: |
           {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
           {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
+          {% with clusters_sorted_by_dist = this.DeRef("models/clusters_sorted_by_dist") %}
               {% if idstitcher.Model.ModelType() == "id_stitcher" %}
                   {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
                   {% with ids_edges = idstitcher.DeRef("edges") %}
@@ -211,10 +212,16 @@ models:
                           ids_edges.id1 = ids.other_id
                       WHERE
                           id1 <> id2
-                          AND ids.{{id_column_name}} in (select {{id_column_name}} from {{clusters_sorted_by_size}} LIMIT 100)
+                          AND ids.{{id_column_name}}
+                              IN (
+                                  SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
+                                  UNION
+                                  SELECT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
+                              )
                   {% endwith %}
                   {% endwith %}
               {% endif %}
+          {% endwith %}
           {% endwith %}
           {% endwith %}
       contract:
