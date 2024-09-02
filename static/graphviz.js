@@ -19,7 +19,8 @@ class GraphView {
 
         this.mySvg = d3.select(`#${svgId}`)
             .attr("width", this.width)
-            .attr("height", this.height);
+            .attr("height", this.height)
+            .style("background", "yellow");
 
         // Add panGroup and centerCoordsElement to the DOM
         this.panGroup = this.mySvg.append("g").attr("id", "panGroup");
@@ -38,17 +39,69 @@ class GraphView {
     loadGraphView(nodes, links, seedNodes, target_nodecount_to_load) {
         this.allNodes = nodes;
         this.allLinks = links;
+
+        // Abbreviate the IDs for nodes
+        this.abbreviateIDs(this.allNodes);
+
         this.finishGraphInit();
         this.loadInitialGraph(seedNodes, target_nodecount_to_load);
-        this.renderGraph();
-        this.startSimulation();
 
-        const firstNode = seedNodes ? seedNodes[0] : Object.values(this.loadedNodes)[0];
-        this.selectNode(firstNode);
-        this.simulateLinks(this.nbrClosure(firstNode));
+        const firstNode = ((seedNodes.length > 0) ? seedNodes[0] : Object.values(this.loadedNodes)[0]);
+        if (firstNode) {
+            this.startSimulation();
 
-        this.updateCenterCoordinates();
+            this.selectNode(firstNode);
+            this.simulateLinks(this.nbrClosure(firstNode));
+            this.updateCenterCoordinates();
+            this.renderGraph();
+        } else {
+            this.startSimulation();
+            this.renderGraph();
+        }
+
         window.addEventListener('resize', this.updateCenterCoordinates.bind(this));
+    }
+
+    // Abbreviation method for IDs
+    abbreviateIDs(nodes) {
+        const typeAbbrMap = {};  // Cache for ID type abbreviations
+
+        function abbreviateType(type) {
+            const lowerCaseType = type.toLowerCase();
+            if (typeAbbrMap[lowerCaseType]) {
+                return typeAbbrMap[lowerCaseType];
+            }
+
+            // Generate abbreviation using a heuristic
+            const parts = lowerCaseType.split(/[\W_]+/);  // Split by non-alphanumeric characters
+            let abbr = parts.map(part => part.charAt(0)).join('').substring(0, 2).toUpperCase();
+            typeAbbrMap[lowerCaseType] = abbr;
+
+            return abbr;
+        }
+
+        function abbreviateValue(type, value) {
+            const lowerCaseType = type.toLowerCase();
+            if (lowerCaseType.includes('email')) {
+                const atIndex = value.indexOf('@');
+                if (atIndex > 0) {
+                    return value.slice(0, Math.min(5, atIndex)) + (atIndex > 5 ? '..' : '');
+                }
+            }
+
+            if (lowerCaseType.includes('phone')) {
+                return '..' + value.slice(-4);
+            } else {
+                return value.slice(0, 6);
+            }
+        }
+
+        nodes.forEach(node => {
+            const [type, value] = node.id.split(':');
+            const shortType = abbreviateType(type);
+            const shortValue = abbreviateValue(type, value);
+            node.shortId = `${shortType}::${shortValue}`;
+        });
     }
 
     clearView() {
@@ -69,7 +122,10 @@ class GraphView {
         let nodesProcessed = 0;
         let nbrsExcluded = new Set();
 
-        while (nodeQueue.length > 0 || (nodesProcessed < target_nodecount_to_load && Object.keys(this.loadedNodes).length < Object.keys(this.allNodes).length)) {
+        if (!target_nodecount_to_load) {
+            target_nodecount_to_load = this.allNodes.length;
+        }
+        while (nodeQueue.length > 0 || (nodesProcessed < target_nodecount_to_load && Object.keys(this.loadedNodes).length < this.allNodes.length)) {
             if (nodeQueue.length === 0) {
                 const chosenIndex = 0;
                 for (let i = 0; i < this.allNodes.length; i++) {
@@ -119,10 +175,19 @@ class GraphView {
             const moreNodeLabel = `${numOfNbrsStillNotLoaded} more`;
             let moreNode = this.loadedNodes[moreNodeId];
             if (!moreNode) {
-                moreNode = { id: moreNodeId, name: moreNodeLabel, parentNodeId: currentNode.id };
+                moreNode = {
+                    id: moreNodeId,
+                    name: moreNodeLabel,
+                    parentNodeId: currentNode.id
+                };
                 this.addToLoadedNodes(moreNode);
 
-                const moreLink = { id: moreLinkId, source: currentNode, target: moreNode, virtual: true };
+                const moreLink = {
+                    id: moreLinkId,
+                    source: currentNode,
+                    target: moreNode,
+                    virtual: true
+                };
                 this.addToLoadedLinks(moreLink);
             } else {
                 moreNode.name = moreNodeLabel;
@@ -178,6 +243,36 @@ class GraphView {
         this.simulateNodes([currentNode]);
     }
 
+    showPopup(content) {
+        // Create a popup div if it doesn't exist
+        let popup = document.getElementById('nodePopup');
+        if (!popup) {
+            popup = document.createElement('div');
+            popup.id = 'nodePopup';
+            popup.style.position = 'absolute';
+            popup.style.padding = '10px';
+            popup.style.backgroundColor = 'white';
+            popup.style.border = '1px solid black';
+            popup.style.zIndex = 1000;
+            document.body.appendChild(popup);
+        }
+
+        // Set the content of the popup
+        popup.innerText = content;
+
+        // Position the popup near the mouse cursor or at a default location
+        popup.style.left = `${window.innerWidth / 2}px`;
+        popup.style.top = `${window.innerHeight / 2}px`;
+
+        // Show the popup
+        popup.style.display = 'block';
+
+        // Hide the popup after 3 seconds (optional)
+        setTimeout(() => {
+            popup.style.display = 'none';
+        }, 15000);
+    }
+
     startSimulation() {
         const nodesToSimulate = Object.values(this.loadedNodes);
         const linksToSimulate = Object.values(this.loadedLinks);
@@ -219,13 +314,14 @@ class GraphView {
             .data(linksData, d => d.id)
             .join(
                 enter => enter.append("line")
-                    .attr("stroke-width", 2)
-                    .attr("class", "link")
-                    .style("stroke", this.getLinkColor.bind(this))
-                    .on("click", (event, l) => {
-                        this.selectLink(l);
-                        this.simulateLinks(this.nbrClosure(l));
-                    }),
+                .attr("stroke-width", 2)
+                .attr("class", "link")
+                .style("stroke", this.getLinkColor.bind(this))
+                .on("click", (event, l) => {
+                    this.showPopup(l.id);  // Show popup if the node is already selected
+                    this.selectLink(l);
+                    this.simulateLinks(this.nbrClosure(l));
+                }),
                 update => update.style("stroke", this.getLinkColor.bind(this)),
                 exit => exit.remove()
             );
@@ -234,14 +330,15 @@ class GraphView {
             .data(nodesData, d => d.id)
             .join(
                 enter => enter.append("g")
-                    .attr("class", "node")
-                    .on("click", (event, n) => {
-                        if (n.id.startsWith("more_")) {
-                            this.loadMoreNeighborsClicked(n);
-                        } else {
-                            this.selectNode(n);
-                        }
-                    }),
+                .attr("class", "node")
+                .on("click", (event, n) => {
+                    this.showPopup(n.id);  // Show popup if the node is already selected
+                    if (n.id.startsWith("more_")) {
+                        this.loadMoreNeighborsClicked(n);
+                    } else {
+                        this.selectNode(n);
+                    }
+                }),
                 update => update,
                 exit => exit.remove()
             );
@@ -255,11 +352,13 @@ class GraphView {
             .attr("x", 0)
             .attr("y", 0)
             .attr("dy", ".35em")
-            .attr("stroke", this.getNodeTextColor.bind(this))
+            .attr("stroke", "none")
             .attr("text-anchor", "middle")
-            .style("font-size", "0.33em")
-            .text(d => d.name ? d.name : d.id)
-            .attr("fill", "deepblue");
+            .style("font-size", "0.5em")
+            .style("font-family", "Arial")
+            //.text(d => (d === this.selectedNode || d === this.selectedLink?.source || d === this.selectedLink?.target) ? d.id : d.shortId)
+            .text(d => d.shortId)
+            .attr("fill", "darkblue");
 
         this.nodes.exit().remove();
     }
@@ -268,8 +367,14 @@ class GraphView {
         this.allNbrsById = {};
         this.allNodes.forEach(node => this.allNbrsById[node.id] = []);
         this.allLinks.forEach(link => {
-            this.allNbrsById[link.source.id].push({ l: link, n: link.target });
-            this.allNbrsById[link.target.id].push({ l: link, n: link.source });
+            this.allNbrsById[link.source.id].push({
+                l: link,
+                n: link.target
+            });
+            this.allNbrsById[link.target.id].push({
+                l: link,
+                n: link.source
+            });
         });
     }
 
@@ -313,6 +418,10 @@ class GraphView {
     }
 
     selectNode(nodeData) {
+        if (!nodeData) {
+            return
+        }
+
         const toggleToDeSelectCase = this.selectedNode === nodeData;
 
         this.deSelectNode();
@@ -329,7 +438,10 @@ class GraphView {
         this.selectedNeighbors = {};
         Object.values(this.loadedLinksAdjlist[nodeData.id]).forEach(link => {
             const neighbor = link.source === nodeData ? link.target : link.source;
-            this.selectedNeighbors[neighbor.id] = { n: neighbor, l: link };
+            this.selectedNeighbors[neighbor.id] = {
+                n: neighbor,
+                l: link
+            };
         });
 
         this.renderGraph();
@@ -337,6 +449,10 @@ class GraphView {
     }
 
     selectLink(linkData) {
+        if (!linkData) {
+            return
+        }
+
         const toggleToDeSelectCase = this.selectedLink === linkData;
 
         this.deSelectNode();
@@ -349,32 +465,49 @@ class GraphView {
         }
 
         this.selectedNeighbors = {};
-        this.selectedNeighbors[linkData.source.id] = { n: linkData.source, l: linkData };
-        this.selectedNeighbors[linkData.target.id] = { n: linkData.target, l: linkData };
+        this.selectedNeighbors[linkData.source.id] = {
+            n: linkData.source,
+            l: linkData
+        };
+        this.selectedNeighbors[linkData.target.id] = {
+            n: linkData.target,
+            l: linkData
+        };
 
         Object.values(this.loadedLinksAdjlist[linkData.source.id]).forEach(link => {
             const neighbor = link.source === linkData.source ? link.target : link.source;
-            this.selectedNeighbors[neighbor.id] = { n: neighbor, l: link };
+            this.selectedNeighbors[neighbor.id] = {
+                n: neighbor,
+                l: link
+            };
         });
 
         Object.values(this.loadedLinksAdjlist[linkData.target.id]).forEach(link => {
             const neighbor = link.source === linkData.target ? link.target : link.source;
-            this.selectedNeighbors[neighbor.id] = { n: neighbor, l: link };
+            this.selectedNeighbors[neighbor.id] = {
+                n: neighbor,
+                l: link
+            };
         });
 
         this.selectedLink = linkData;
+
         this.renderGraph();
         this.simulateLinks(this.nbrClosure(linkData));
     }
 
     deSelectNode() {
-        this.selectedNode = null;
-        this.renderGraph();
+        if (this.selectedNode) {
+            this.selectedNode = null;
+            this.renderGraph();
+        }
     }
 
     deSelectLink() {
-        this.selectedLink = null;
-        this.renderGraph();
+        if (this.selectedLink) {
+            this.selectedLink = null;
+            this.renderGraph();
+        }
     }
 
     deSelectNbrs() {
@@ -402,14 +535,15 @@ class GraphView {
 
     simulateLinks(links) {
         this.simulation.force("link").links(links);
-        this.simulation.alpha(0.3).restart();  // Adjusted alpha target
+        this.simulation.alpha(0.3).restart(); // Adjusted alpha target
         this.zoomToBoundingBox();
     }
 
     zoomToBoundingBox() {
         if (this.selectedNode || this.selectedLink) {
             setTimeout(() => {
-                const xs = new Set(), ys = new Set();
+                const xs = new Set(),
+                    ys = new Set();
 
                 if (this.selectedNode) {
                     xs.add(this.selectedNode.x);
@@ -427,7 +561,10 @@ class GraphView {
                 });
 
                 if (xs.size >= 1) {
-                    const x0 = d3.min(xs), y0 = d3.min(ys), x1 = d3.max(xs), y1 = d3.max(ys);
+                    const x0 = d3.min(xs),
+                        y0 = d3.min(ys),
+                        x1 = d3.max(xs),
+                        y1 = d3.max(ys);
                     console.log(x0, y0, x1, y1)
                     const boxWidth = Math.max(0.1, x1 - x0);
                     const boxHeight = Math.max(0.1, y1 - y0);
@@ -479,7 +616,7 @@ class GraphView {
 
     getNodeFillColor(n) {
         if (n.id.startsWith("more")) {
-            return "white";
+            return "#CFFF04";
         } else if (this.selectedNode) {
             if (n === this.selectedNode) {
                 return "lightblue";
@@ -521,23 +658,43 @@ class GraphView {
 
 function createRandomGraph(full_node_count, full_link_count) {
     retval = {}
-    retval.allNodes = Array.from({ length: full_node_count }, (_, i) => ({ id: `n${i}` }));
-    retval.allLinks = Array.from({ length: full_link_count }, () => {
+    retval.allNodes = Array.from({
+        length: full_node_count
+    }, (_, i) => ({
+        id: `n${i}`
+    }));
+    retval.allLinks = Array.from({
+        length: full_link_count
+    }, () => {
         let src = Math.floor(Math.random() * (full_node_count - 1));
         let tgt = Math.floor(Math.random() * (full_node_count - 1));
-        if (src > tgt) [src, tgt] = [tgt, src];
+        if (src > tgt)[src, tgt] = [tgt, src];
         tgt = tgt + 1;
 
-        return { id: `e_${src}_${tgt}`, source: retval.allNodes[src], target: retval.allNodes[tgt] };
+        return {
+            id: `e_${src}_${tgt}`,
+            source: retval.allNodes[src],
+            target: retval.allNodes[tgt]
+        };
     });
     return retval;
 }
 
 function createStarGraph(node_count) {
     retval = {}
-    retval.allNodes = Array.from({ length: node_count }, (_, i) => ({ id: `n${i}` }));
-    retval.allLinks = Array.from({ length: node_count - 1 }, (_, i) => {
-        return { id: `e_0_${i + 1}`, source: retval.allNodes[0], target: retval.allNodes[i + 1] };
+    retval.allNodes = Array.from({
+        length: node_count
+    }, (_, i) => ({
+        id: `n${i}`
+    }));
+    retval.allLinks = Array.from({
+        length: node_count - 1
+    }, (_, i) => {
+        return {
+            id: `e_0_${i + 1}`,
+            source: retval.allNodes[0],
+            target: retval.allNodes[i + 1]
+        };
     });
     return retval;
 }
@@ -559,5 +716,5 @@ function start(mode) {
     graphView.loadGraphView(graph.allNodes, graph.allLinks, seedNodes, target_nodecount_to_load);
 }
 
-start("star");
+// start("star");
 // start("random");

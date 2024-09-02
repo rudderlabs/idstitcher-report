@@ -141,7 +141,7 @@
     </style>
 </head>
 <body>
-    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count", "models/clusters"] %}
+    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_in_biggest_clusters", "models/id_type_count", "models/id_count", "models/clusters"] %}
     <div class="tab-container">
         <div class="header">
             <img alt="" src="./{{ this.DeRef('static/logo.jpg') }}" style="height: 80px; width: auto;" />
@@ -205,7 +205,6 @@
         <div id="id-graph-tab" class="tab-content">
             <h2>ID Graph</h2>
             <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
-            <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
         </div>
 
         <div id="tables-tab" class="tab-content">
@@ -214,13 +213,13 @@
             <ul id="tables-toc">
                 <li><a href="#top_max_degree_nodes">Top Max Degree Nodes</a></li>
                 <li><a href="#edges_graph">Edges Graph</a></li>
-                <li><a href="#edges_biggest_cluster">Edges in Biggest Cluster</a></li>
+                <li><a href="#edges_in_biggest_clusters">Edges in Biggest Clusters</a></li>
                 <li><a href="#id_type_count">ID Type Count</a></li>
                 <li><a href="#id_count">ID Count</a></li>
             </ul>
             <div id="top-max-degree-nodes"></div>
             <div id="edges-graph"></div>
-            <div id="edges-biggest-cluster"></div>
+            <div id="edges-in-biggest-clusters"></div>
             <div id="id-type-count"></div>
             <div id="id-count"></div>
         </div>
@@ -381,6 +380,45 @@
             {% for qmodel in query_models %}
                 renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
             {% endfor %}
+
+            // First, find the cluster with the largest MAX_DIST
+            let maxDistCluster = {{this.DeRef("models/clusters_sorted_by_dist").Name()}}.Results.reduce((max, cluster) => {
+                return cluster[1] > max[1] ? cluster : max;
+            }, [null, -Infinity]);
+
+            let mainID = maxDistCluster[2];
+
+            // Filter links that belong to the selected cluster
+            let linkRows = {{this.DeRef("models/edges_graph").Name()}}.Results.filter(edge => edge[4] === mainID);
+
+            // Extract node and link dicts from the linkRows.
+            let clusterNodes = {}, clusterLinks = {};
+
+            linkRows.map(linkRow => {
+                id1 = linkRow[1] + ":" + linkRow[0];
+                if (!clusterNodes[id1]) {
+                        clusterNodes[id1] = {id: id1};
+                }
+
+                id2 = linkRow[3] + ":" + linkRow[2];
+                if (!clusterNodes[id2]) {
+                        clusterNodes[id2] = {id: id2};
+                }
+
+                link_id = linkRow[0] + ":" + linkRow[2];
+                clusterLinks[link_id] = { source: clusterNodes[id1], target: clusterNodes[id2], id: link_id, mainID: linkRow[4] };
+            });
+
+            let allNodes = Object.values(clusterNodes);
+            let allLinks = Object.values(clusterLinks);
+
+            // Initialize and load the GraphView
+            let graphView = new GraphView('mySvg');
+            graphView.loadGraphView(allNodes, allLinks, []);
+
+            // Example of clearing and reloading the graph if needed
+            // clearView();
+            // graphView.loadGraphView(allNodes, allLinks);
         };
     </script>
 </body>

@@ -7,21 +7,24 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher" %}
-            select sum(user_count) as user_count, max(other_id_count) as max_id_count,
-              cast(sum(user_count * other_id_count) as {{warehouse.DataType("float")}}) / cast(sum(user_count) as {{warehouse.DataType("float")}}) as avg_id_count
-            from (
-              select other_id_count,  count(distinct {{input_material.Model.GetEntity().IdColumnName}}) as user_count
-              from (
-                select {{input_material.Model.GetEntity().IdColumnName}}, count(other_id) as other_id_count
-                from {{input_material}}
-                group by {{input_material.Model.GetEntity().IdColumnName}}
-              )
-              group by other_id_count
-            )
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                      SELECT
+                          SUM(user_count) AS user_count, MAX(other_id_count) AS max_id_count,
+                          CAST(sum(user_count * other_id_count) AS {{warehouse.DataType("float")}}) / cast(sum(user_count) as {{warehouse.DataType("float")}}) as avg_id_count
+                      FROM (
+                          SELECT other_id_count, COUNT(DISTINCT {{id_column_name}}) AS user_count
+                          FROM (
+                              SELECT {{id_column_name}}, COUNT(other_id) AS other_id_count
+                              FROM {{idstitcher}}
+                              GROUP BY {{id_column_name}}
+                          )
+                          GROUP BY other_id_count
+                      )
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -35,13 +38,17 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher" %}
-            select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
-            from {{input_material}}_internal_mapping
-            group by {{input_material.Model.GetEntity().IdColumnName}}
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with ids_mappings = idstitcher.DeRef("mappings") %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                      SELECT COUNT(DISTINCT(node_id)) AS id_count, MAX({{id_column_name}}_dist) AS max_dist, {{id_column_name}}
+                      FROM {{ids_mappings}}
+                      GROUP BY {{id_column_name}}
+                  {% endwith %}
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -55,11 +62,11 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("models/clusters") %}
-          select * from {{input_material.Name()}}
-          order by id_count desc
-          limit 10
-        {% endwith %}
+          {% with clusters = this.DeRef("models/clusters") %}
+              SELECT * from {{clusters}}
+              ORDER BY id_count DESC
+              LIMIT 10
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -73,11 +80,11 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("models/clusters") %}
-          select * from {{input_material.Name()}}
-          order by max_dist desc
-          limit 10
-        {% endwith %}
+          {% with clusters = this.DeRef("models/clusters") %}
+              SELECT * from {{clusters}}
+              ORDER BY max_dist DESC
+              LIMIT 10
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -91,32 +98,53 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material = this.DeRef("inputs/id_stitcher") %}
-          {% if input_material.Model.ModelType() == "id_stitcher" %}
-            select {{input_material.Model.GetEntity().IdColumnName}} as main_id, node_id, node_id_type, degree
-            from (
-              select m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type, count(*) as degree, row_number() over (partition by m.{{input_material.Model.GetEntity().IdColumnName}} order by count(*) desc) as rn
-              from (
-                select id1 as node_id, id1_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_internal_edges A inner join {{input_material}} B on A.id1 = B.other_id
-                where id1 <> id2
-                union all
-                select id2 as node_id, id2_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_internal_edges A inner join {{input_material}} B on A.id2 = B.other_id
-                where id1 <> id2
-              ) AS e
-              inner join {{input_material}} m on e.node_id = m.other_id
-              where m.{{input_material.Model.GetEntity().IdColumnName}} IN (
-                select {{input_material.Model.GetEntity().IdColumnName}}
-                from {{input_material}}
-                group by {{input_material.Model.GetEntity().IdColumnName}}
-                order by count(other_id) desc
-                limit 10
-              )
-              group by m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type
-              order by degree desc
-            ) as ranked
-            where rn <= 10
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                  {% with ids_edges = idstitcher.DeRef("edges") %}
+                      SELECT {{id_column_name}} as main_id, node_id, node_id_type, degree
+                      FROM (
+                          SELECT
+                              m.{{id_column_name}}, e.node_id, e.node_id_type,
+                              count(*) AS degree,
+                              row_number() OVER (PARTITION BY m.{{id_column_name}} ORDER BY COUNT(*) DESC) AS rn
+                          FROM (
+                                  SELECT
+                                      id1 AS node_id, id1_type AS node_id_type, B.{{id_column_name}}
+                                  FROM
+                                      {{ids_edges}} A
+                                      INNER JOIN
+                                      {{idstitcher}} B
+                                  ON A.id1 = B.other_id
+                                  WHERE id1 <> id2
+                              UNION ALL
+                                  SELECT
+                                      id2 AS node_id, id2_type AS node_id_type, B.{{id_column_name}}
+                                  FROM
+                                      {{ids_edges}} A
+                                      INNER JOIN
+                                      {{idstitcher}} B
+                                  ON A.id2 = B.other_id
+                                  WHERE id1 <> id2
+                              ) AS e
+                          INNER JOIN
+                              {{idstitcher}} m
+                          ON e.node_id = m.other_id
+                          WHERE m.{{id_column_name}} IN (
+                              SELECT {{id_column_name}}
+                              FROM {{idstitcher}}
+                              GROUP BY {{id_column_name}}
+                              ORDER BY COUNT(other_id) DESC
+                              LIMIT 10
+                          )
+                          GROUP BY m.{{id_column_name}}, e.node_id, e.node_id_type
+                          ORDER BY degree DESC
+                       ) AS ranked
+                       WHERE rn <= 10
+                  {% endwith %}
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -130,19 +158,37 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") %}
-          {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-            from {{input_material1}}_internal_edges A inner join {{input_material1}} B on A.id1 = B.other_id
-            where id1 <> id2 AND id1 in (select node_id from {{input_material2.Name()}}) AND id2 in (select node_id from {{input_material2.Name()}})
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with clusters_sorted_by_dist = this.DeRef("models/clusters_sorted_by_dist") %}
+          {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                  {% with ids_edges = idstitcher.DeRef("edges") %}
+                      SELECT id1, id1_type, id2, id2_type, B.{{id_column_name}} AS main_id
+                      FROM
+                          {{ids_edges}} A
+                          INNER JOIN
+                          {{idstitcher}} B
+                          ON A.id1 = B.other_id
+                      WHERE
+                          id1 <> id2
+                          AND B.{{id_column_name}} IN (
+                              SELECT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
+                              UNION
+                              SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
+                          )
+                  {% endwith %}
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
+          {% endwith %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
         with_entity_ids: []
         with_columns: []
-  - name: edges_biggest_cluster
+  - name: edges_in_biggest_clusters
     model_type: sql_template
     model_spec:
       validity_time: 24h # 1 day
@@ -150,14 +196,27 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") input_material3 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-            from {{input_material1}}_internal_edges A inner join {{input_material1}} B on A.id1 = B.other_id
-            where id1 <> id2 AND id1 in (select node_id from {{input_material2.Name()}}) AND id2 in (select node_id from {{input_material2.Name()}})
-              AND B.{{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3.Name()}} limit 1)
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                  {% with ids_edges = idstitcher.DeRef("edges") %}
+                      SELECT
+                          id1, id1_type, id2, id2_type, ids.{{id_column_name}} as main_id
+                      FROM
+                          {{ids_edges}} ids_edges
+                      INNER JOIN
+                          {{idstitcher}} ids
+                      ON
+                          ids_edges.id1 = ids.other_id
+                      WHERE
+                          id1 <> id2
+                          AND ids.{{id_column_name}} in (select {{id_column_name}} from {{clusters_sorted_by_size}} LIMIT 100)
+                  {% endwith %}
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -171,15 +230,22 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |
-        {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select A.{{input_material1.Model.GetEntity().IdColumnName}},
-          other_id_type, count(other_id) as id_type_count, max(B.id_count) as total_id_count
-            from {{input_material1}} A inner join {{input_material2.Name()}} B on A.{{input_material1.Model.GetEntity().IdColumnName}} = B.{{input_material1.Model.GetEntity().IdColumnName}}
-            group by A.{{input_material1.Model.GetEntity().IdColumnName}}, other_id_type
-            order by total_id_count desc , id_type_count desc
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                      SELECT A.{{id_column_name}}, other_id_type, count(other_id) as id_type_count, max(B.id_count) as total_id_count
+                      FROM
+                          {{idstitcher}} A
+                      INNER JOIN
+                          {{clusters_sorted_by_size}} B
+                      ON A.{{id_column_name}} = B.{{id_column_name}}
+                      GROUP BY A.{{id_column_name}}, other_id_type
+                      ORDER BY total_id_count DESC, id_type_count DESC
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
@@ -193,19 +259,28 @@ models:
         output_type: ephemeral
         run_type: discrete
       single_sql: |-
-        {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
-          {% if input_material1.Model.ModelType() == "id_stitcher" %}
-            select id1_type, id1, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count, count(id1) as total_instances
-            from {{input_material1}}_internal_edges
-            where id1 in (
-              select distinct other_id
-              from {{input_material1}}
-              where {{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material2.Name()}})
-              )
-            group by 1, 2
-            order by 4 desc;
-          {% endif %}
-        {% endwith %}
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
+              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                  {% with ids_edges = idstitcher.DeRef("edges") %}
+                      SELECT id1_type, id1, COUNT(DISTINCT {{id_column_name}}) AS merged_user_count, count(id1) AS total_instances
+                      FROM {{ids_edges}}
+                      WHERE id1 IN (
+                          SELECT DISTINCT other_id
+                          FROM {{idstitcher}}
+                          WHERE {{id_column_name}}
+                          IN (
+                                SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
+                          )
+                      )
+                      GROUP BY 1, 2
+                      ORDER BY 4 DESC;
+                  {% endwith %}
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
+          {% endwith %}
       contract:
         is_optional: false
         is_event_stream: false
