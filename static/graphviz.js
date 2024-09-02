@@ -44,7 +44,7 @@ class GraphView {
         this.nodes = null;
     }
 
-    loadGraphView(nodes, links, seedNodes, target_nodecount_to_load) {
+    setupGraphView(nodes, links, seedNodes, target_nodecount_to_load) {
         this.allNodes = nodes;
         this.allLinks = links;
 
@@ -70,48 +70,6 @@ class GraphView {
         window.addEventListener('resize', this.updateCenterCoordinates.bind(this));
     }
 
-    // Abbreviation method for IDs
-    abbreviateIDs(nodes) {
-        const typeAbbrMap = {};  // Cache for ID type abbreviations
-
-        function abbreviateType(type) {
-            const lowerCaseType = type.toLowerCase();
-            if (typeAbbrMap[lowerCaseType]) {
-                return typeAbbrMap[lowerCaseType];
-            }
-
-            // Generate abbreviation using a heuristic
-            const parts = lowerCaseType.split(/[\W_]+/);  // Split by non-alphanumeric characters
-            let abbr = parts.map(part => part.charAt(0)).join('').substring(0, 2).toUpperCase();
-            typeAbbrMap[lowerCaseType] = abbr;
-
-            return abbr;
-        }
-
-        function abbreviateValue(type, value) {
-            const lowerCaseType = type.toLowerCase();
-            if (lowerCaseType.includes('email')) {
-                const atIndex = value.indexOf('@');
-                if (atIndex > 0) {
-                    return value.slice(0, Math.min(5, atIndex)) + (atIndex > 5 ? '..' : '');
-                }
-            }
-
-            if (lowerCaseType.includes('phone')) {
-                return '..' + value.slice(-4);
-            } else {
-                return value.slice(0, 6);
-            }
-        }
-
-        nodes.forEach(node => {
-            const [type, value] = node.id.split(':');
-            const shortType = abbreviateType(type);
-            const shortValue = abbreviateValue(type, value);
-            node.shortId = `${shortType}::${shortValue}`;
-        });
-    }
-
     clearView() {
         this.panGroup.selectAll("*").remove();
         this.loadedNodes = {};
@@ -122,6 +80,19 @@ class GraphView {
         this.selectedNeighbors = {};
         if (this.simulation) {
             this.simulation.stop();
+        }
+    }
+
+    searchGraph(searchTerm) {
+        searchTerm = searchTerm.toLowerCase();
+        // Find matching nodes
+        const matchingNodes = this.allNodes.filter(node => node.id.toLowerCase().includes(searchTerm));
+
+        if (matchingNodes.length > 0) {
+            // Zoom to the first matching node
+            this.selectNode(matchingNodes[0]);
+        } else {
+            alert("No matching nodes found.");
         }
     }
 
@@ -662,6 +633,48 @@ class GraphView {
             return "lightgray";
         }
     }
+
+    // Abbreviation method for IDs
+    abbreviateIDs(nodes) {
+        const typeAbbrMap = {};  // Cache for ID type abbreviations
+
+        function abbreviateType(type) {
+            const lowerCaseType = type.toLowerCase();
+            if (typeAbbrMap[lowerCaseType]) {
+                return typeAbbrMap[lowerCaseType];
+            }
+
+            // Generate abbreviation using a heuristic
+            const parts = lowerCaseType.split(/[\W_]+/);  // Split by non-alphanumeric characters
+            let abbr = parts.map(part => part.charAt(0)).join('').substring(0, 2).toUpperCase();
+            typeAbbrMap[lowerCaseType] = abbr;
+
+            return abbr;
+        }
+
+        function abbreviateValue(type, value) {
+            const lowerCaseType = type.toLowerCase();
+            if (lowerCaseType.includes('email')) {
+                const atIndex = value.indexOf('@');
+                if (atIndex > 0) {
+                    return value.slice(0, Math.min(5, atIndex)) + (atIndex > 5 ? '..' : '');
+                }
+            }
+
+            if (lowerCaseType.includes('phone')) {
+                return '..' + value.slice(-4);
+            } else {
+                return value.slice(0, 6);
+            }
+        }
+
+        nodes.forEach(node => {
+            const [type, value] = node.id.split(':');
+            const shortType = abbreviateType(type);
+            const shortValue = abbreviateValue(type, value);
+            node.shortId = `${shortType}::${shortValue}`;
+        });
+    }
 }
 
 function createRandomGraph(full_node_count, full_link_count) {
@@ -721,7 +734,7 @@ function start(mode) {
         target_nodecount_to_load = 5;
     }
 
-    graphView.loadGraphView(graph.allNodes, graph.allLinks, seedNodes, target_nodecount_to_load);
+    graphView.setupGraphView(graph.allNodes, graph.allLinks, seedNodes, target_nodecount_to_load);
 }
 
 // start("star");

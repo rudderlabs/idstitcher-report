@@ -167,7 +167,7 @@
                 <svg id="mySvg" width="960" height="600">
                 <div style="text-align: center; margin-bottom: 10px;">
                     <input type="text" id="search" placeholder="Search for a node or link...">
-                    <button onclick="searchGraph()">Search</button>
+                    <button onclick="searchGraphClicked()">Search</button>
                 </div>
                 <p>The cluster section highlights shows the top clusters. Click on any row in the tables below to visualise that cluster. When the graph is very large, we may not load the entire graph.</p>
                 </svg>
@@ -427,12 +427,18 @@
 
             // Clear the existing view and load the new cluster
             graphView.clearView();
-            graphView.loadGraphView(allNodes, allLinks, []);
+            graphView.setupGraphView(allNodes, allLinks, []);
 
             // Add cluster ID as a heading in the SVG element
             d3.select("#mySvg").select("#title").text(`Cluster ID: ${clusterId}`);
         }
 
+        function searchGraphClicked() {
+            const searchTerm = document.getElementById('search').value.toLowerCase();
+            if (searchTerm) {
+               graphView.searchGraph(searchTerm);
+           }
+        }
     </script>
 </body>
 </html>
