@@ -156,7 +156,6 @@
         </div>
 
         <div id="introduction-tab" class="tab-content active">
-            <h1>ID Stitcher Report</h1>
             <div id="introduction" class="intro">
                 <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
             </div>
@@ -164,15 +163,13 @@
         </div>
 
         <div id="clusters-tab" class="tab-content">
-            <h2>Clusters</h2>
             <div class="section" id="biggest-cluster-section">
-                <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
-
+                <svg id="mySvg" width="960" height="600">
                 <div style="text-align: center; margin-bottom: 10px;">
                     <input type="text" id="search" placeholder="Search for a node or link...">
                     <button onclick="searchGraph()">Search</button>
                 </div>
-                <svg id="mySvg" width="960" height="600">
+                <p>The cluster section highlights shows the top clusters. Click on any row in the tables below to visualise that cluster. When the graph is very large, we may not load the entire graph.</p>
                 </svg>
 
                 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -203,12 +200,10 @@
         </div>
 
         <div id="id-graph-tab" class="tab-content">
-            <h2>ID Graph</h2>
             <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
         </div>
 
         <div id="tables-tab" class="tab-content">
-            <h2>Tables</h2>
             <p>This section provides data from miscellaneous tables/models in the warehouse, showcasing clusters, statistics, and ID counts.</p>
             <ul id="tables-toc">
                 <li><a href="#top_max_degree_nodes">Top Max Degree Nodes</a></li>
@@ -250,7 +245,7 @@
 
                 const activeTabContent = document.getElementById(button.getAttribute('data-tab'));
                 activeTabContent.classList.add('active');
-                
+
                 button.classList.add('active');
                 button.style.color = '#1F70C1'; // Set color for the active tab
             });
@@ -281,6 +276,7 @@
             const containerId = tableName.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
             let containerDiv = document.getElementById(containerId);
             const isOverallStats = containerId === 'overall-stats';
+            const isClusterTable = (containerId === 'clusters-sorted-by-dist' || containerId === 'clusters-sorted-by-size');
 
             // Check if the container already exists
             if (!containerDiv) {
@@ -340,10 +336,22 @@
 
                 const rowsToShow = 20;
                 let rowsDisplayed = 0;
-  
+
                 const addRows = (start, end) => {
                     for (let i = start; i < end && i < data.Results.length; i++) {
                         const row = document.createElement("tr");
+
+                        if (isClusterTable) {
+                            row.style.cursor = "pointer";  // Visual indicator for clickable row
+                            row.title = "Click to load this cluster";  // Tooltip to indicate clickability
+
+                            row.addEventListener('click', () => {
+                                const clusterId = data.Results[i][2]; // Assuming USER_MAIN_ID is at index 2
+                                window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to the top
+                                loadCluster(clusterId);
+                            });
+                        }
+
                         data.Results[i].forEach((value) => {
                             const td = document.createElement("td");
                             td.textContent = value;
@@ -376,6 +384,8 @@
             }
         }
 
+        graphView = new GraphView('mySvg');
+
         window.onload = function () {
             {% for qmodel in query_models %}
                 renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
@@ -386,40 +396,43 @@
                 return cluster[1] > max[1] ? cluster : max;
             }, [null, -Infinity]);
 
-            let mainID = maxDistCluster[2];
+            let clusterId = maxDistCluster[2];
+            loadCluster(clusterId);
+        };
 
+        function loadCluster(clusterId) {
             // Filter links that belong to the selected cluster
-            let linkRows = {{this.DeRef("models/edges_graph").Name()}}.Results.filter(edge => edge[4] === mainID);
+            let linkRows = {{this.DeRef("models/edges_graph").Name()}}.Results.filter(edge => edge[4] === clusterId);
 
             // Extract node and link dicts from the linkRows.
             let clusterNodes = {}, clusterLinks = {};
 
             linkRows.map(linkRow => {
-                id1 = linkRow[1] + ":" + linkRow[0];
+                const id1 = linkRow[1] + ":" + linkRow[0];
                 if (!clusterNodes[id1]) {
-                        clusterNodes[id1] = {id: id1};
+                    clusterNodes[id1] = { id: id1 };
                 }
 
-                id2 = linkRow[3] + ":" + linkRow[2];
+                const id2 = linkRow[3] + ":" + linkRow[2];
                 if (!clusterNodes[id2]) {
-                        clusterNodes[id2] = {id: id2};
+                    clusterNodes[id2] = { id: id2 };
                 }
 
-                link_id = linkRow[0] + ":" + linkRow[2];
-                clusterLinks[link_id] = { source: clusterNodes[id1], target: clusterNodes[id2], id: link_id, mainID: linkRow[4] };
+                const link_id = linkRow[0] + ":" + linkRow[2];
+                clusterLinks[link_id] = { source: clusterNodes[id1], target: clusterNodes[id2], id: link_id, clusterId: linkRow[4] };
             });
 
-            let allNodes = Object.values(clusterNodes);
-            let allLinks = Object.values(clusterLinks);
+            const allNodes = Object.values(clusterNodes);
+            const allLinks = Object.values(clusterLinks);
 
-            // Initialize and load the GraphView
-            let graphView = new GraphView('mySvg');
+            // Clear the existing view and load the new cluster
+            graphView.clearView();
             graphView.loadGraphView(allNodes, allLinks, []);
 
-            // Example of clearing and reloading the graph if needed
-            // clearView();
-            // graphView.loadGraphView(allNodes, allLinks);
-        };
+            // Add cluster ID as a heading in the SVG element
+            d3.select("#mySvg").select("#title").text(`Cluster ID: ${clusterId}`);
+        }
+
     </script>
 </body>
 </html>

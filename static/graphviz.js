@@ -29,7 +29,15 @@ class GraphView {
             .attr("x", "50%")
             .attr("y", "50%")
             .attr("stroke", "black")
+            .style("opacity", 0.4)
             .text("480, 300");
+
+        this.titleText = this.mySvg.append("text")
+                .attr("id", "title")
+                .attr("x", 20)
+                .attr("y", 30)
+                .attr("font-size", "20px")
+                .attr("font-weight", "bold")
 
         this.simulation = null;
         this.links = null;
@@ -332,7 +340,7 @@ class GraphView {
                 enter => enter.append("g")
                 .attr("class", "node")
                 .on("click", (event, n) => {
-                    this.showPopup(n.id);  // Show popup if the node is already selected
+                    this.showPopup(n.name || n.id);  // Show popup if the node is already selected
                     if (n.id.startsWith("more_")) {
                         this.loadMoreNeighborsClicked(n);
                     } else {
