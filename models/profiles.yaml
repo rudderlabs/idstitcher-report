@@ -25,11 +25,6 @@ models:
                   {% endwith %}
               {% endif %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: clusters
     model_type: sql_template
     model_spec:
@@ -49,11 +44,6 @@ models:
                   {% endwith %}
               {% endif %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: clusters_sorted_by_size
     model_type: sql_template
     model_spec:
@@ -67,11 +57,6 @@ models:
               ORDER BY id_count DESC
               LIMIT 10
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: clusters_sorted_by_dist
     model_type: sql_template
     model_spec:
@@ -85,11 +70,6 @@ models:
               ORDER BY max_dist DESC
               LIMIT 10
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: top_max_degree_nodes
     model_type: sql_template
     model_spec:
@@ -145,49 +125,6 @@ models:
                   {% endwith %}
               {% endif %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
-  - name: edges_graph
-    model_type: sql_template
-    model_spec:
-      validity_time: 24h # 1 day
-      materialization:
-        output_type: ephemeral
-        run_type: discrete
-      single_sql: |
-          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
-          {% with clusters_sorted_by_dist = this.DeRef("models/clusters_sorted_by_dist") %}
-          {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
-              {% if idstitcher.Model.ModelType() == "id_stitcher" %}
-                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
-                  {% with ids_edges = idstitcher.DeRef("edges") %}
-                      SELECT id1, id1_type, id2, id2_type, B.{{id_column_name}} AS main_id
-                      FROM
-                          {{ids_edges}} A
-                          INNER JOIN
-                          {{idstitcher}} B
-                          ON A.id1 = B.other_id
-                      WHERE
-                          id1 <> id2
-                          AND B.{{id_column_name}} IN (
-                              SELECT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
-                              UNION
-                              SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
-                          )
-                  {% endwith %}
-                  {% endwith %}
-              {% endif %}
-          {% endwith %}
-          {% endwith %}
-          {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: edges_in_chosen_clusters
     model_type: sql_template
     model_spec:
@@ -197,6 +134,7 @@ models:
         run_type: discrete
       single_sql: |
           {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with seed_clusters_optional = this.DeRef("models/seed_clusters_processed", dependency="optional") %}
           {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
           {% with clusters_sorted_by_dist = this.DeRef("models/clusters_sorted_by_dist") %}
               {% if idstitcher.Model.ModelType() == "id_stitcher" %}
@@ -214,6 +152,10 @@ models:
                           id1 <> id2
                           AND ids.{{id_column_name}}
                               IN (
+                                  {% if !seed_clusters_optional.IsNil() %}
+                                  SELECT {{id_column_name}} FROM {{seed_clusters_optional}}
+                                  UNION
+                                  {% endif %}
                                   SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
                                   UNION
                                   SELECT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
@@ -224,11 +166,7 @@ models:
           {% endwith %}
           {% endwith %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
+          {% endwith %}
   - name: id_type_count
     model_type: sql_template
     model_spec:
@@ -253,11 +191,6 @@ models:
               {% endif %}
           {% endwith %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
   - name: id_count
     model_type: sql_template
     model_spec:
@@ -288,8 +221,27 @@ models:
               {% endif %}
           {% endwith %}
           {% endwith %}
-      contract:
-        is_optional: false
-        is_event_stream: false
-        with_entity_ids: []
-        with_columns: []
+  - name: seed_clusters_processed
+    model_type: sql_template
+    model_spec:
+      validity_time: 24h # 1 day
+      materialization:
+        output_type: ephemeral
+        run_type: discrete
+      single_sql: |
+          {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
+          {% with seed_clusters = this.DeRef("inputs/seed_clusters") %}
+              {% if !seed_clusters.IsNil() && idstitcher.Model.ModelType() == "id_stitcher" %}
+                  {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
+                      SELECT
+                          CONCAT(sc.id, ":", sc.id_type) AS query,
+                          CONCAT(ids.other_id, ":", ids.other_id_type) AS match,
+                          CASE WHEN sc.id_type == "rudder_id" THEN sc.id ELSE ids.{{id_column_name}} END AS {{id_column_name}}
+                      FROM
+                          {{seed_clusters}} sc
+                          LEFT JOIN {{idstitcher}} ids
+                          ON ids.other_id LIKE CONCAT("%", sc.id, "%") AND ids.other_id_type LIKE CONCAT("%", sc.id_type, "%")
+                  {% endwith %}
+              {% endif %}
+          {% endwith %}
+          {% endwith %}
