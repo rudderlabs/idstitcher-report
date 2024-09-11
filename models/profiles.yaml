@@ -37,8 +37,9 @@ models:
       single_sql: |
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
           {% if input_material.Model.ModelType() == "id_stitcher" %}
+            {% set internal_mapping = warehouse.NamedWhObject(name=input_material.UnQuotedName()+"_internal_mapping", type="TABLE") %}
             select count(distinct(node_id)) as id_count, max({{input_material.Model.GetEntity().IdColumnName}}_dist) as max_dist, {{input_material.Model.GetEntity().IdColumnName}}
-            from {{input_material}}_internal_mapping
+            from {{internal_mapping}}
             group by {{input_material.Model.GetEntity().IdColumnName}}
           {% endif %}
         {% endwith %}
@@ -56,7 +57,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material = this.DeRef("models/clusters") %}
-          select * from {{input_material.Name()}}
+          select * from {{input_material}}
           order by id_count desc
           limit 10
         {% endwith %}
@@ -74,7 +75,7 @@ models:
         run_type: discrete
       single_sql: |
         {% with input_material = this.DeRef("models/clusters") %}
-          select * from {{input_material.Name()}}
+          select * from {{input_material}}
           order by max_dist desc
           limit 10
         {% endwith %}
@@ -93,14 +94,15 @@ models:
       single_sql: |
         {% with input_material = this.DeRef("inputs/id_stitcher") %}
           {% if input_material.Model.ModelType() == "id_stitcher" %}
+            {% set internal_edges = warehouse.NamedWhObject(name=input_material.UnQuotedName()+"_internal_edges", type="TABLE") %}
             select {{input_material.Model.GetEntity().IdColumnName}} as main_id, node_id, node_id_type, degree
             from (
               select m.{{input_material.Model.GetEntity().IdColumnName}}, e.node_id, e.node_id_type, count(*) as degree, row_number() over (partition by m.{{input_material.Model.GetEntity().IdColumnName}} order by count(*) desc) as rn
               from (
-                select id1 as node_id, id1_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_internal_edges A inner join {{input_material}} B on A.id1 = B.other_id
+                select id1 as node_id, id1_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{internal_edges}} A inner join {{input_material}} B on A.id1 = B.other_id
                 where id1 <> id2
                 union all
-                select id2 as node_id, id2_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{input_material}}_internal_edges A inner join {{input_material}} B on A.id2 = B.other_id
+                select id2 as node_id, id2_type as node_id_type, B.{{input_material.Model.GetEntity().IdColumnName}} FROM {{internal_edges}} A inner join {{input_material}} B on A.id2 = B.other_id
                 where id1 <> id2
               ) AS e
               inner join {{input_material}} m on e.node_id = m.other_id
@@ -132,8 +134,9 @@ models:
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
+            {% set internal_edges_1 = warehouse.NamedWhObject(name=input_material1.UnQuotedName()+"_internal_edges", type="TABLE") %}
             select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-            from {{input_material1}}_internal_edges A inner join {{input_material1}} B on A.id1 = B.other_id
+            from {{internal_edges_1}} A inner join {{input_material1}} B on A.id1 = B.other_id
             where id1 <> id2 AND id1 in (select node_id from {{input_material2.Name()}}) AND id2 in (select node_id from {{input_material2.Name()}})
           {% endif %}
         {% endwith %}
@@ -152,8 +155,9 @@ models:
       single_sql: |
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/top_max_degree_nodes") input_material3 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
+            {% set internal_edges_1 = warehouse.NamedWhObject(name=input_material1.UnQuotedName()+"_internal_edges", type="TABLE") %}
             select id1, id1_type, id2, id2_type, B.{{input_material1.Model.GetEntity().IdColumnName}} as main_id
-            from {{input_material1}}_internal_edges A inner join {{input_material1}} B on A.id1 = B.other_id
+            from {{internal_edges_1}} A inner join {{input_material1}} B on A.id1 = B.other_id
             where id1 <> id2 AND id1 in (select node_id from {{input_material2.Name()}}) AND id2 in (select node_id from {{input_material2.Name()}})
               AND B.{{input_material1.Model.GetEntity().IdColumnName}} in (select {{input_material1.Model.GetEntity().IdColumnName}} from {{input_material3.Name()}} limit 1)
           {% endif %}
@@ -195,8 +199,9 @@ models:
       single_sql: |-
         {% with input_material1 = this.DeRef("inputs/id_stitcher") input_material2 = this.DeRef("models/clusters_sorted_by_size") %}
           {% if input_material1.Model.ModelType() == "id_stitcher" %}
+            {% set internal_edges_1 = warehouse.NamedWhObject(name=input_material1.UnQuotedName()+"_internal_edges", type="TABLE") %}
             select id1_type, id1, count(distinct {{input_material1.Model.GetEntity().IdColumnName}}) as merged_user_count, count(id1) as total_instances
-            from {{input_material1}}_internal_edges
+            from {{internal_edges_1}}
             where id1 in (
               select distinct other_id
               from {{input_material1}}
