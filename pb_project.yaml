@@ -1,7 +1,7 @@
 # Project name
 name: idstitcher-report
 # Project's yaml schema version
-schema_version: 55
+schema_version: 78
 # WH Connection to use.
 connection: test
 # Whether to allow inputs having no timestamps,
