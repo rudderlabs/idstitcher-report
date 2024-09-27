@@ -35,7 +35,7 @@ models:
       single_sql: |
         {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
             {% if idstitcher.Model.ModelType() == "id_stitcher" %}
-                {% with ids_mappings = idstitcher.DeRef("mappings") %}
+                {% with ids_mappings = idstitcher.DeRef("./mappings") %}
                 {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
                     SELECT COUNT(DISTINCT(node_id)) AS id_count, MAX({{id_column_name}}_dist) AS max_dist, {{id_column_name}}
                     FROM {{ids_mappings}}
@@ -81,7 +81,7 @@ models:
         {% with idstitcher = this.DeRef("inputs/id_stitcher") %}
             {% if idstitcher.Model.ModelType() == "id_stitcher" %}
                 {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
-                {% with ids_edges = idstitcher.DeRef("edges") %}
+                {% with ids_edges = idstitcher.DeRef("./edges") %}
                     SELECT {{id_column_name}} as main_id, node_id, node_id_type, degree
                     FROM (
                         SELECT
@@ -139,7 +139,7 @@ models:
         {% with clusters_sorted_by_dist = this.DeRef("models/clusters_sorted_by_dist") %}
             {% if idstitcher.Model.ModelType() == "id_stitcher" %}
                 {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
-                {% with ids_edges = idstitcher.DeRef("edges") %}
+                {% with ids_edges = idstitcher.DeRef("./edges") %}
                     SELECT
                         id1, id1_type, id2, id2_type, ids.{{id_column_name}} as main_id
                     FROM
@@ -203,7 +203,7 @@ models:
         {% with clusters_sorted_by_size = this.DeRef("models/clusters_sorted_by_size") %}
             {% if idstitcher.Model.ModelType() == "id_stitcher" %}
                 {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
-                {% with ids_edges = idstitcher.DeRef("edges") %}
+                {% with ids_edges = idstitcher.DeRef("./edges") %}
                     SELECT id1_type, id1, COUNT(DISTINCT {{id_column_name}}) AS merged_user_count, count(id1) AS total_instances
                     FROM {{ids_edges}}
                     WHERE id1 IN (
