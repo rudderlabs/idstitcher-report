@@ -1,12 +1,9 @@
 # Project name
 name: idstitcher-report
 # Project's yaml schema version
-schema_version: 55
+schema_version: 82
 # WH Connection to use.
 connection: test
-# Whether to allow inputs having no timestamps,
-# if true, data without timestamps are included when running models
-include_untimed: true
 # Model folders to use.
 model_folders:
   - models
@@ -17,3 +14,4 @@ entities:
       - na_id
 id_types:
   - name: na_id
+retention_period: 720h0m0s
