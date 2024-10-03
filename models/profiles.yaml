@@ -2,7 +2,6 @@ models:
   - name: overall_stats
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -30,7 +29,6 @@ models:
   - name: clusters
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -51,7 +49,6 @@ models:
   - name: clusters_sorted_by_size
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -69,7 +66,6 @@ models:
   - name: clusters_sorted_by_dist
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -87,7 +83,6 @@ models:
   - name: top_max_degree_nodes
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -127,7 +122,6 @@ models:
   - name: edges_graph
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -148,7 +142,6 @@ models:
   - name: edges_biggest_cluster
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -170,7 +163,6 @@ models:
   - name: id_type_count
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
@@ -192,7 +184,6 @@ models:
   - name: id_count
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
