@@ -1,7 +1,7 @@
 # Project name
 name: idstitcher-report
 # Project's yaml schema version
-schema_version: 72
+schema_version: 82
 # WH Connection to use.
 connection: test
 # Model folders to use.
@@ -14,3 +14,4 @@ entities:
       - na_id
 id_types:
   - name: na_id
+retention_period: 720h0m0s
