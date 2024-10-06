@@ -216,7 +216,6 @@ models:
   - name: seed_clusters_processed
     model_type: sql_template
     model_spec:
-      validity_time: 24h # 1 day
       materialization:
         output_type: ephemeral
         run_type: discrete
