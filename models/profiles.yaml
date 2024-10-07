@@ -147,12 +147,12 @@ models:
                         AND ids.{{id_column_name}}
                             IN (
                                 {% if !seed_clusters_optional.IsNil() %}
-                                SELECT {{id_column_name}} FROM {{seed_clusters_optional}}
+                                SELECT DISTINCT {{id_column_name}} FROM {{seed_clusters_optional}}
                                 UNION
                                 {% endif %}
-                                SELECT {{id_column_name}} FROM {{clusters_sorted_by_size}}
+                                SELECT DISTINCT {{id_column_name}} FROM {{clusters_sorted_by_size}}
                                 UNION
-                                SELECT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
+                                SELECT DISTINCT {{id_column_name}} FROM {{clusters_sorted_by_dist}}
                             )
                 {% endwith %}
                 {% endwith %}
