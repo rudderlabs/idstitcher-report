@@ -7,3 +7,13 @@ inputs:
       with_columns: []
     app_defaults:
       table: NA
+  - name: seed_clusters
+    contract:
+      is_optional: true
+      is_event_stream: false
+      with_entity_ids: []
+      with_columns:
+        - name: id
+        - name: id_type
+    app_defaults:
+      table: NA

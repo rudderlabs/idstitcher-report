@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAG Visualization with D3.js</title>
+    <style>
+        body {
+            background-color: yellow;
+            margin: 0;
+            padding: 0;
+        }
+
+        text {
+            font-size: 16px;
+            fill: white;
+            text-anchor: middle;
+        }
+
+        .node circle {
+            stroke: #000;
+            stroke-width: 1.5px;
+        }
+
+        .node text {
+            font: 12px sans-serif;
+            pointer-events: none;
+        }
+
+        .link {
+            fill: none;
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 1.5px;
+            marker-end: url(#arrowhead);
+        }
+    </style>
+</head>
+<body>
+    <div style="text-align: center; margin-bottom: 10px;">
+        <input type="text" id="search" placeholder="Search for a node or link...">
+        <button onclick="searchGraph()">Search</button>
+    </div>
+    <svg id="mySvg" width="960" height="600">
+    </svg>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="./graphviz.js"> </script>
+</body>
+</html>
+

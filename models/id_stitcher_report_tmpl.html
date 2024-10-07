@@ -12,30 +12,64 @@
             margin: 0;
             padding: 0;
             display: flex;
+            flex-direction: column;
         }
 
-        .content {
-            max-width: 800px;
-            padding: 1em;
-            margin-left: 240px; /* Increased margin for better separation from TOC */
-            margin-right: 20px;
+        .header {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 0em 0em;
         }
 
-        .toc {
-            position: fixed;
-            width: 220px; /* Increased width for better readability */
-            height: 100%;
-            overflow-y: auto;
+        .tab-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .tabs {
+            display: flex;
             background-color: #f4f4f4;
-            padding: 1em;
-            box-shadow: 2px 0px 5px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            flex: 1;
+            text-align: center;
+            color: #1F70C1;
+        }
+
+         .tab-button.active {
+             background-color: #ddd;
+             font-weight: bold;
+             border-bottom: 2px solid #1F70C1; /* IBM Blue */
+             color: #1F70C1;
+         }
+
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         h1, h2, h3 {
             color: #1F70C1; /* IBM Blue */
         }
 
-        .table-container {
+        .section {
             margin-bottom: 3em;
         }
 
@@ -104,49 +138,96 @@
             cursor: pointer;
         }
 
-        ul ul {
-            margin-left: 15px; /* Reduce the margin for nested lists */
-        }
     </style>
 </head>
 <body>
-    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_graph", "models/edges_biggest_cluster", "models/id_type_count", "models/id_count", "models/clusters"] %}
+    {% set query_models = ["models/overall_stats", "models/clusters_sorted_by_size", "models/clusters_sorted_by_dist", "models/top_max_degree_nodes", "models/edges_in_chosen_clusters", "models/id_type_count", "models/id_count", "models/clusters"] %}
 
-    <div class="toc">
-        <h2>Contents</h2>
-        <ul id="toc">
-            <li><a href="#introduction">Introduction</a></li>
-            <li><a href="#id-graph">ID Graph</a></li>
-            <li><a href="#biggest-cluster">Biggest Cluster</a></li>
-            <li><a href="#tables">Tables</a>
-                <ul>
+    {% with seed_clusters_optional = this.DeRef("models/seed_clusters_processed", dependency="optional") %}
+        <div class="tab-container">
+            <div class="header">
+                <img alt="" src="./{{ this.DeRef('static/logo.jpg') }}" style="height: 80px; width: auto;" />
+                <h1>ID Stitcher Report</h1>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-button" data-tab="introduction-tab">Introduction</button>
+                <button class="tab-button active" data-tab="clusters-tab">Clusters</button>
+                <button class="tab-button" data-tab="id-graph-tab">ID Graph</button>
+                <button class="tab-button" data-tab="tables-tab">Tables</button>
+            </div>
+
+            <div id="introduction-tab" class="tab-content">
+                <div id="introduction" class="intro">
+                    <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
+                </div>
+                <div id="overall-stats"></div>
+            </div>
+
+            <div id="clusters-tab" class="tab-content active">
+                <div class="section" id="chosen-clusters-section">
+                    <svg id="mySvg" width="960" height="600">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <input type="text" id="search" placeholder="Search for a node or link...">
+                        <button onclick="searchGraphClicked()">Search</button>
+                    </div>
+                    <p>The cluster section highlights shows the top clusters. Click on any row in the tables below to visualise that cluster. When the graph is very large, we may not load the entire graph.</p>
+                    </svg>
+
+                    <script src="https://d3js.org/d3.v7.min.js"></script>
+                    <script src="{{this.DeRef('static/graphviz.js')}}"></script>
+                </div>
+                In tables below, column descriptions are as follows:
+                <ol>
+                    {% with input_material = this.DeRef("inputs/id_stitcher").Model %}
+                    {# <li>{{input_material.GetEntity().Model.IdColumnName}}: The MAIN_ID value that as considered as representative of the cluster.</li> #}
+                    {% endwith %}
+                    <li>MainId: The MAIN_ID value that as considered as representative of the cluster.</li>
+                    <li>ID_COUNT: Number of all IDs present in the cluster.</li>
+                    <li>MAX_DIST: Maximumm distance of any node in the cluster from main ID. Following can be noted:
+                        <ol>
+                           <il>Double of the MAX_DIST is an upper bound on the diameter of the cluster.</li>
+                           <il>A cluster has many IDs. These IDs are associated with different discovery timestamps, due to IDENTIFY events recorded in various "edge_sources". Due to the way ID stitching algorithm operates, main ID of the cluster is related with the oldest ID(i.e. one with oldest timestamp) in the cluster.</li>
+                        </ol>
+                    </li>
+                </ol>
+                {% if !seed_clusters_optional.IsNil() %}
+                    <div class="section" id="seed-clusters-section">
+                        <h2>Seed Clusters</h2>
+                        <div id="seed-clusters-processed"></div>
+                    </div>
+                {% endif %}
+                <div class="section" id="clusters-size-section">
+                    <h2>Clusters sorted by size of the cluster</h2>
+                    <div id="clusters-sorted-by-size"></div>
+                </div>
+                <div class="section" id="clusters-dist-section">
+                    <h2>Clusters sorted by distance from MAIN_ID node</h2>
+                    <div id="clusters-sorted-by-dist"></div>
+                </div>
+            </div>
+
+            <div id="id-graph-tab" class="tab-content">
+                <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
+            </div>
+
+            <div id="tables-tab" class="tab-content">
+                <p>This section provides data from miscellaneous tables/models in the warehouse, showcasing clusters, statistics, and ID counts.</p>
+                <ul id="tables-toc">
+                    <li><a href="#top_max_degree_nodes">Top Max Degree Nodes</a></li>
+                    <li><a href="#edges_in_chosen_clusters">Edges in Chosen Clusters</a></li>
+                    <li><a href="#id_type_count">ID Type Count</a></li>
+                    <li><a href="#id_count">ID Count</a></li>
+                    <li><a href="#clusters">Clusters</a></li>
                 </ul>
-            </li>
-        </ul>
-    </div>
-
-    <div class="content">
-        <img alt="" src="./{{ this.DeRef("static/logo.jpg") }}" style="width: 500px; height: auto" />
-        <h1>ID Stitcher Report</h1>
-
-        <div id="introduction" class="intro">
-            <p>This report provides an overview of the ID Stitcher functionality, which is crucial for maintaining the integrity of ID graphs and clusters. This document highlights key insights into top clusters and nodes, offering visual and tabular data representation for in-depth analysis.</p>
+                <div id="top-max-degree-nodes"></div>
+                <div id="edges-graph"></div>
+                <div id="edges-in-chosen-clusters"></div>
+                <div id="id-type-count"></div>
+                <div id="id-count"></div>
+                <div id="clusters"></div>
+            </div>
         </div>
-
-        <h2 id="id-graph">ID Graph</h2>
-        <p>The ID Graph section displays the top clusters, sorted by size. Each cluster features the top nodes, sorted by their degree. Only edges connecting these nodes are shown; some nodes might have additional unseen edges.</p>
-        <img src="{{this.DbObjectName('id_graph.png')}}" alt="ID Graph" class="clickable">
-
-        <h2 id="biggest-cluster">Biggest Cluster</h2>
-        <p>The Biggest Cluster section highlights the top nodes, sorted by their degree. Similar to the ID Graph, only edges connecting these nodes are displayed, though more edges may exist that are not shown.</p>
-        <img src="{{this.DbObjectName('biggest_cluster.png')}}" alt="Biggest Cluster" class="clickable">
-
-        <h2 id="tables">Tables</h2>
-        <p>This section provides detailed data tables derived from various models, showcasing clusters, statistics, and ID counts.</p>
-
-        {% for qmodel in query_models %}
-            <script src={{ this.DeRef(qmodel) }}></script>
-        {% endfor %}
 
         <!-- Popup structure -->
         <div class="popup" id="popup">
@@ -154,73 +235,34 @@
             <img id="popupImg" src="" alt="Popup Image">
         </div>
 
+        {% for qmodel in query_models %}
+            <script src={{ this.DeRef(qmodel) }}></script>
+        {% endfor %}
+
+        {% if !(seed_clusters_optional.IsNil()) %}
+            <script src={{ seed_clusters_optional }}></script>
+        {% endif %}
+
         <script>
-            function renderTable(data, tableName) {
-                const containerDiv = document.createElement("div");
-                containerDiv.classList.add("table-container");
-                containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+            // Tab functionality
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabContentElements = document.querySelectorAll('.tab-content');
+                    const tabButtonElements = document.querySelectorAll('.tab-button');
 
-                const heading = document.createElement("h3");
-                heading.textContent = `${tableName} (${data.Results.length} rows)`;
-                containerDiv.appendChild(heading);
+                    tabContentElements.forEach(content => content.classList.remove('active'));
+                    tabButtonElements.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.color = ''; // Reset color for inactive tabs
+                    });
 
-                const table = document.createElement("table");
+                    const activeTabContent = document.getElementById(button.getAttribute('data-tab'));
+                    activeTabContent.classList.add('active');
 
-                const headerRow = document.createElement("tr");
-                data.Columns.forEach((column) => {
-                    const th = document.createElement("th");
-                    th.textContent = column;
-                    headerRow.appendChild(th);
+                    button.classList.add('active');
+                    button.style.color = '#1F70C1'; // Set color for the active tab
                 });
-                table.appendChild(headerRow);
-
-                const rowsToShow = 100;
-                let rowsDisplayed = 0;
-
-                const addRows = (start, end) => {
-                    for (let i = start; i < end && i < data.Results.length; i++) {
-                        const row = document.createElement("tr");
-                        data.Results[i].forEach((value) => {
-                            const td = document.createElement("td");
-                            td.textContent = value;
-                            row.appendChild(td);
-                        });
-                        table.appendChild(row);
-                    }
-                };
-
-                addRows(0, rowsToShow);
-                rowsDisplayed += rowsToShow;
-
-                containerDiv.appendChild(table);
-
-                if (data.Results.length > rowsDisplayed) {
-                    const showMoreButton = document.createElement('div');
-                    showMoreButton.classList.add('show-more');
-                    showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
-                    showMoreButton.onclick = () => {
-                        addRows(rowsDisplayed, rowsDisplayed + 50);
-                        rowsDisplayed += 50;
-                        if (rowsDisplayed >= data.Results.length) {
-                            showMoreButton.style.display = 'none';
-                        } else {
-                            showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
-                        }
-                    };
-                    containerDiv.appendChild(showMoreButton);
-                }
-
-                document.querySelector('.content').appendChild(containerDiv);
-
-                // Add to Table of Contents
-                const tocList = document.getElementById('toc');
-                const tocItem = document.createElement('li');
-                const tocLink = document.createElement('a');
-                tocLink.href = `#${containerDiv.id}`;
-                tocLink.textContent = tableName;
-                tocItem.appendChild(tocLink);
-                tocList.querySelector('ul').appendChild(tocItem);
-            }
+            });
 
             // Image popup functionality
             document.querySelectorAll('img.clickable').forEach(img => {
@@ -243,12 +285,178 @@
                 }
             };
 
+            function renderTable(data, tableName) {
+                const containerId = tableName.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
+                let containerDiv = document.getElementById(containerId);
+                const isOverallStats = containerId === 'overall-stats';
+                const isClickableClusterTable = (containerId === 'clusters-sorted-by-dist' || containerId === 'clusters-sorted-by-size' || containerId === 'seed-clusters-processed');
+
+                // Check if the container already exists
+                if (!containerDiv) {
+                    containerDiv = document.createElement("div");
+                    containerDiv.id = containerId;
+
+                    document.querySelector('#tables-tab').appendChild(containerDiv);
+                }
+
+                const heading = document.createElement("h3");
+                heading.textContent = `${tableName} (${data.Results.length} rows)`;
+                containerDiv.appendChild(heading);
+
+                containerDiv.classList.add("table-container");
+                containerDiv.id = tableName.toLowerCase().replace(/ /g, '-');
+
+                if (isOverallStats) {
+                    containerDiv.style.maxWidth = "400px"; // Make it cozier for Overall Stats
+                }
+
+                const table = document.createElement("table");
+
+                if (isOverallStats) {
+                    heading.textContent = `${tableName}`;
+
+                    const headerRow = document.createElement("tr");
+                    const nameHeader = document.createElement("th");
+                    nameHeader.textContent = "Name";
+                    const valueHeader = document.createElement("th");
+                    valueHeader.textContent = "Value";
+                    headerRow.appendChild(nameHeader);
+                    headerRow.appendChild(valueHeader);
+                    table.appendChild(headerRow);
+
+                    data.Columns.forEach((column, colIndex) => {
+                        const row = document.createElement("tr");
+                        const th = document.createElement("th");
+                        th.textContent = column;
+                        row.appendChild(th);
+                        data.Results.forEach(result => {
+                            const td = document.createElement("td");
+                            td.textContent = result[colIndex];
+                            row.appendChild(td);
+                        });
+                        table.appendChild(row);
+                    });
+
+                    containerDiv.appendChild(table);
+                } else {
+                    const headerRow = document.createElement("tr");
+                    data.Columns.forEach((column) => {
+                        const th = document.createElement("th");
+                        th.textContent = column;
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    const rowsToShow = 20;
+                    let rowsDisplayed = 0;
+
+                    const addRows = (start, end) => {
+                        for (let i = start; i < end && i < data.Results.length; i++) {
+                            const row = document.createElement("tr");
+
+                            if (isClickableClusterTable) {
+                                row.style.cursor = "pointer";  // Visual indicator for clickable row
+                                row.title = "Click to load this cluster";  // Tooltip to indicate clickability
+
+                                row.addEventListener('click', () => {
+                                    const clusterId = data.Results[i][2]; // Assuming USER_MAIN_ID is at index 2
+                                    window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to the top
+                                    loadCluster(clusterId);
+                                });
+                            }
+
+                            data.Results[i].forEach((value) => {
+                                const td = document.createElement("td");
+                                td.textContent = value;
+                                row.appendChild(td);
+                            });
+                            table.appendChild(row);
+                        }
+                    };
+
+                    addRows(0, rowsToShow);
+                    rowsDisplayed += rowsToShow;
+
+                    containerDiv.appendChild(table);
+
+                    if (data.Results.length > rowsDisplayed) {
+                        const showMoreButton = document.createElement('div');
+                        showMoreButton.classList.add('show-more');
+                        showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                        showMoreButton.onclick = () => {
+                            addRows(rowsDisplayed, rowsDisplayed + 50);
+                            rowsDisplayed += 50;
+                            if (rowsDisplayed >= data.Results.length) {
+                                showMoreButton.style.display = 'none';
+                            } else {
+                                showMoreButton.textContent = `Show more (${data.Results.length - rowsDisplayed} more rows)`;
+                            }
+                        };
+                        containerDiv.appendChild(showMoreButton);
+                    }
+                }
+            }
+
+            graphView = new GraphView('mySvg');
+
             window.onload = function () {
                 {% for qmodel in query_models %}
                     renderTable({{ this.DeRef(qmodel).Name() }}, "{{ this.DeRef(qmodel).GetModel() }}");
                 {% endfor %}
+
+                {% if !(seed_clusters_optional.IsNil()) %}
+                    renderTable({{ seed_clusters_optional.Name() }}, "{{ seed_clusters_optional.GetModel() }}");
+                {% endif %}
+
+                // First, find the cluster with the largest MAX_DIST
+                let maxDistCluster = {{this.DeRef("models/clusters_sorted_by_dist").Name()}}.Results.reduce((max, cluster) => {
+                    return cluster[1] > max[1] ? cluster : max;
+                }, [null, -Infinity]);
+
+                let clusterId = maxDistCluster[2];
+                loadCluster(clusterId);
             };
+
+            function loadCluster(clusterId) {
+                // Filter links that belong to the selected cluster
+                let linkRows = {{this.DeRef("models/edges_in_chosen_clusters").Name()}}.Results.filter(edge => edge[4] === clusterId);
+
+                // Extract node and link dicts from the linkRows.
+                let clusterNodes = {}, clusterLinks = {};
+
+                linkRows.map(linkRow => {
+                    const id1 = linkRow[1] + ":" + linkRow[0];
+                    if (!clusterNodes[id1]) {
+                        clusterNodes[id1] = { id: id1 };
+                    }
+
+                    const id2 = linkRow[3] + ":" + linkRow[2];
+                    if (!clusterNodes[id2]) {
+                        clusterNodes[id2] = { id: id2 };
+                    }
+
+                    const link_id = linkRow[0] + ":" + linkRow[2];
+                    clusterLinks[link_id] = { source: clusterNodes[id1], target: clusterNodes[id2], id: link_id, clusterId: linkRow[4] };
+                });
+
+                const allNodes = Object.values(clusterNodes);
+                const allLinks = Object.values(clusterLinks);
+
+                // Clear the existing view and load the new cluster
+                graphView.clearView();
+                graphView.setupGraphView(allNodes, allLinks, []);
+
+                // Add cluster ID as a heading in the SVG element
+                d3.select("#mySvg").select("#title").text(`Cluster ID: ${clusterId}`);
+            }
+
+            function searchGraphClicked() {
+                const searchTerm = document.getElementById('search').value.toLowerCase();
+                if (searchTerm) {
+                   graphView.searchGraph(searchTerm);
+               }
+            }
         </script>
-    </div>
+    {% endwith %}
 </body>
 </html>
