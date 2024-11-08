@@ -231,13 +231,13 @@ models:
             {% if !seed_clusters.IsNil() && idstitcher.Model.ModelType() == "id_stitcher" %}
                 {% with id_column_name = idstitcher.Model.GetEntity().IdColumnName %}
                     SELECT
-                        CONCAT(sc.id, ":", sc.id_type) AS query,
-                        CONCAT(ids.other_id, ":", ids.other_id_type) AS match,
-                        CASE WHEN sc.id_type == "rudder_id" THEN sc.id ELSE ids.{{id_column_name}} END AS {{id_column_name}}
+                        {{wh_specific_concat("sc.id, ':', sc.id_type")}} AS query,
+                        {{wh_specific_concat("ids.other_id, ':', ids.other_id_type")}} AS match,
+                        CASE WHEN sc.id_type = 'rudder_id' THEN sc.id ELSE ids.{{id_column_name}} END AS {{id_column_name}}
                     FROM
                         {{seed_clusters}} sc
                         LEFT JOIN {{idstitcher}} ids
-                        ON ids.other_id LIKE CONCAT("%", sc.id, "%") AND ids.other_id_type LIKE CONCAT("%", sc.id_type, "%")
+                        ON ids.other_id LIKE {{wh_specific_concat("'%', sc.id, '%'")}} AND ids.other_id_type LIKE {{wh_specific_concat("'%', sc.id_type, '%'")}}
                 {% endwith %}
             {% endif %}
         {% endwith %}
