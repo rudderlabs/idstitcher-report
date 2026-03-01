@@ -18,9 +18,9 @@ models:
                             SELECT {{id_column_name}}, COUNT(other_id) AS other_id_count
                             FROM {{idstitcher}}
                             GROUP BY {{id_column_name}}
-                        )
+                        ) AS _inner_counts
                         GROUP BY other_id_count
-                    )
+                    ) AS _outer_counts
                 {% endwith %}
             {% endif %}
         {% endwith %}
